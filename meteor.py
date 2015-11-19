@@ -18,8 +18,6 @@ import Vector as v
 gApp = None
 gAssets = None
 
-# temporary hack for loading resources
-os.chdir('d:/home/shapiroj/work/python/pyglet/meteor')
 
 # Define the application class
 
