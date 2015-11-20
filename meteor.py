@@ -334,7 +334,7 @@ class GameAssets(object):
 
         self.loadStdImage('image_2400e-Andromeda-Galaxy-b.png', 'galaxy')
 
-        self.pew = pyglet.media.load('sound/pew4.mp3', streaming=False)
+        self.pew = pyglet.media.load('sounds/pew4.mp3', streaming=False)
 
         # Get this font by specifying font_name='Orbitron', bold=True
         path = 'fonts/Orbitron Bold.ttf'
