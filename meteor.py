@@ -230,6 +230,7 @@ class GameWindow(pyglet.window.Window):
     def shoot(self):
         g = self.gameElements
         shot = g.ship.shoot(g.shotBatch)
+        #gAssets.pew.play()
         if shot is not None:
             g.shots.append(shot)
             m = self.findShotHit(shot)
@@ -295,11 +296,9 @@ class GameAssets(object):
     def loadAssets(self):
         self.images = {}
 
-        si = pyglet.image.load('images/space_ship_neon6.png')
-        #self.shipImage = si
+        si = self.loadStdImage('space_ship_neon6.png', 'ship')
         si.anchor_x = si.width//2
         si.anchor_y = int(si.height * 0.35)
-        self.images['ship'] = si
 
         # Yeah, this is kind of a miscellaneous thing but it makes sense to put
         # it in assets along with the image it's talking about.
@@ -308,7 +307,6 @@ class GameAssets(object):
         fl = self.loadStdImage('flames.png', 'flames')
         fl.anchor_x = si.anchor_x
         fl.anchor_y = si.anchor_y
-        #self.images['flames'] = fl
 
         li = self.loadStdImage('shot_neon.png', 'shot')
         li.anchor_x = 0
@@ -334,19 +332,17 @@ class GameAssets(object):
 
         self.loadStdImage('image_2400e-Andromeda-Galaxy-b.png', 'galaxy')
 
-        self.pew = pyglet.media.load('sounds/pew4.mp3', streaming=False)
+        self.pew = pyglet.resource.media('pew4.mp3', streaming=False)
 
         # Get this font by specifying font_name='Orbitron', bold=True
-        path = 'fonts/Orbitron Bold.ttf'
-        pyglet.font.add_file(path)
-        #pyglet.font.add_file('fonts/matt-mcinerney_orbitron/Orbitron Medium.ttf')
+        fontFile = 'Orbitron Bold.ttf'
+        pyglet.resource.add_font(fontFile)
 
-        #f = pyglet.font.load('Orbitron Bold')
 
     def loadStdImage(self, fileName, tag):
         # Loads the image and puts the anchor in the center.
         # You can re-set the center if that default isn't right.
-        img = pyglet.image.load('images/%s' % fileName)
+        img = pyglet.resource.image(fileName)
         img.anchor_x = img.width//2
         img.anchor_y = img.height//2
         self.images[tag] = img
@@ -411,7 +407,6 @@ class GameElements(object):
         self.dbgSquare1.update(dt)
         self.dbgSquare2.update(dt)
 
-#class ShipSprite(pyglet.sprite.Sprite):
 class ShipSprite(object):
     def __init__(self, *args, **kwargs):
         #super(ShipSprite, self).__init__(self.__class__.image, x=kwargs['x'], y=kwargs['y'])
@@ -422,7 +417,6 @@ class ShipSprite(object):
         self.spriteFlames.opacity = 0
         self.motion = tv.ThrustMotionWithDrag( x, y)
         self.motion.setDrag(0.05)
-        self.angleXXX = 0.0
 
         rotPull = 9000
         rotDrag = 800    
@@ -767,6 +761,9 @@ def main():
         windowOpts = {'fullscreen': True}
     else:
         windowOpts = {'width': 1200, 'height': 700}
+
+    pyglet.resource.path = ['images', 'sounds', 'fonts']
+    pyglet.resource.reindex()
 
     # Create the (few) global object
     gAssets = GameAssets()
