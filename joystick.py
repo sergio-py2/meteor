@@ -1,4 +1,4 @@
-#!/c/Python27/python.exe  -u
+#!python  -u
 
 import sys
 
