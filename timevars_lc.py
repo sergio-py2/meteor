@@ -2,7 +2,7 @@
 
 import math
 import random
-
+# Rename
 class CountDownTime(object):
     ''' Simple countdown timer'''
     def __init__(self, lifetime):
