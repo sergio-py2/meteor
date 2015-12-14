@@ -231,7 +231,8 @@ class GameWindow(pyglet.window.Window):
     def shoot(self):
         g = self.gameElements
         shot = g.ship.shoot(g.shotBatch)
-        #gAssets.pew.play()
+        gAssets.getSound('pew').play()
+
         if shot is not None:
             g.shots.append(shot)
             m = self.findShotHit(shot)
@@ -275,6 +276,7 @@ class GameWindow(pyglet.window.Window):
 
         g.starField.draw()
         g.meteorBatch.draw()
+        #g.expl.draw()
 
         g.ship.draw()
         #g.dbgSquare1.draw()
@@ -296,6 +298,7 @@ class GameAssets(object):
 
     def loadAssets(self):
         self.images = {}
+        self.sounds = {}
 
         si = self.loadStdImage('space_ship_neon6.png', 'ship')
         si.anchor_x = si.width//2
@@ -333,11 +336,36 @@ class GameAssets(object):
 
         self.loadStdImage('image_2400e-Andromeda-Galaxy-b.png', 'galaxy')
 
-        self.pew = pyglet.resource.media('pew4.mp3', streaming=False)
+
+        exp = pyglet.resource.image('SkybusterExplosion-flip2.png')
+        expSeq = pyglet.image.ImageGrid(exp, 5, 4)  # weird, y count then x count
+
+        cx = (exp.width//4)/2
+        cy = (exp.height//5)/2
+
+        # You get to set the anchor point on each grid sub-image independently
+        for frame in expSeq:
+            frame.anchor_x = cx
+            frame.anchor_y = cy
+
+        anim = pyglet.image.Animation.from_image_sequence(expSeq, .05, True)
+        self.images['explosion'] = anim
+
+        self.loadStdSound('pew4.mp3', 'pew')
+        #self.pew = pyglet.resource.media('pew4.mp3', streaming=False)
+        #self.pew = pyglet.resource.media('pew-js.wma', streaming=False)
 
         # Get this font by specifying font_name='Orbitron', bold=True
         fontFile = 'Orbitron Bold.ttf'
         pyglet.resource.add_font(fontFile)
+
+    def loadStdSound(self, fileName, tag):
+        s = pyglet.resource.media(fileName, streaming=False)
+        self.sounds[tag] = s
+        return s
+
+    def getSound(self, tag):
+        return self.sounds[tag]
 
 
     def loadStdImage(self, fileName, tag):
@@ -368,6 +396,7 @@ class GameElements(object):
         self.meteorBatch = pyglet.graphics.Batch()
         self.score = Score()
         self.addMeteors(30)
+        #self.expl = ExplosionSprite(200, 350)
 
 
         self.shots = []
@@ -396,6 +425,7 @@ class GameElements(object):
                 m.delete()
 
         self.meteors = [m for m in self.meteors if m.alive == True]
+        #self.expl.update(dt)
 
         for sh in self.shots:
             sh.update(dt)
@@ -519,7 +549,7 @@ class ShipSprite(object):
             return None
 
 class LaserCannon(object):
-    resetTime = 0.1
+    resetTime = 0.05
 
     def __init__(self):
         super(LaserCannon, self).__init__()
@@ -561,7 +591,7 @@ class ShotSprite(pyglet.sprite.Sprite):
         return v.Vector(self.x, self.y), v.Vector(*uvec(self.rotation+90.))
 
 class MeteorSprite(pyglet.sprite.Sprite):
-    lifeTime = 0.08
+    #lifeTime = 0.08
 
     def __init__(self, x, y, w, h, batch):
         super(self.__class__, self).__init__(gAssets.getImage('asteroid'), x,y, batch=batch)
@@ -598,6 +628,27 @@ class MeteorSprite(pyglet.sprite.Sprite):
     def dump(self):
         return "(%d, %d)" % (self.x, self.y)
 
+
+class ExplosionSprite(pyglet.sprite.Sprite):
+    #lifeTime = 0.08
+
+    def __init__(self, x, y):
+        super(self.__class__, self).__init__(gAssets.getImage('explosion'), x, y)
+
+        th = 360*random.random()
+        u,v = uvec(th)
+        self.alive = True
+        self.timeAlive = 0.0
+        self.angle = tv.LinearMotion(0,120)
+
+    def update(self, dt):
+        #self.motion.update(dt)
+        self.angle.update(dt)
+
+        #self.x, self.y = self.motion.getValue()
+
+        self.rotation = self.angle.getValue()
+        self.timeAlive += dt
 
 class StarField(object):
 
@@ -758,6 +809,8 @@ def main():
     global gApp
     global gAssets
 
+    #LaserCannon.resetTime = 0.05
+
     if len(sys.argv) > 1 and sys.argv[1] == '-f':
         windowOpts = {'fullscreen': True}
     else:
@@ -771,6 +824,15 @@ def main():
     gAssets.loadAssets()
 
     gApp = Application(windowOpts)
+    
+    # First time a sound is played there is a delay. So 
+    # play it now to get it over with. (Causes slight delay.)
+    developing = False
+    if not developing:
+        player = pyglet.media.Player()
+        player.volume = 0
+        player.queue(gAssets.getSound('pew'))
+        player.play()
 
 
     pyglet.clock.set_fps_limit(60)
