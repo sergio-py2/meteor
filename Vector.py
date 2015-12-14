@@ -84,3 +84,16 @@ def ProjectOnto( w,v ):
     'Projects w onto v.'
     return v * Dot(w,v) / LengthSqrd(v)
 
+
+
+def uvec(degrees):
+    rads = math.pi * degrees / 180.0
+    return (math.sin(rads), math.cos(rads))
+
+def ray_x_pnt(o, u, p):
+    # Returns across, along distances
+    d = p-o
+    along = Dot(u, d)
+    proj =  u * along
+    perp = d - proj
+    return Norm(perp), along

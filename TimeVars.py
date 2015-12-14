@@ -3,6 +3,56 @@
 import math
 import random
 
+class CountDownTime(object):
+    ''' Simple countdown timer'''
+    def __init__(self, lifetime):
+        self.lifetime = lifetime
+        self.timeAlive = 0.0
+        self.alive = True
+
+    def update(self, dt):
+        self.timeAlive += dt
+        if self.timeAlive > self.lifetime:
+            self.alive = False
+
+    def done(self):
+        return not self.alive
+
+
+class Shaker(object):
+    def __init__(self, lifetime, _range):
+        self.lifetime = lifetime
+        self.range = _range
+        self.timeAlive = 0.0
+        self.alive = True
+
+    def update(self, dt):
+        self.timeAlive += dt
+        if self.timeAlive > self.lifetime:
+            self.alive = False
+
+    def getValue(self):
+        return self.range * (2. * random.random() - 1.)
+
+class Shaker2(object):
+    def __init__(self, lifetime, rangeSpace, rangeAngle):
+        self.x = Shaker(lifetime, rangeSpace)
+        self.y = Shaker(lifetime, rangeSpace)
+        self.rangeAngle = rangeAngle
+        self.alive = True
+
+    def update(self, dt):
+        self.x.update(dt)
+        self.y.update(dt)
+        self.alive = self.x.alive
+
+    def getValue(self):
+        return (self.x.getValue(), self.y.getValue())
+
+    def getAngle(self):
+        return self.rangeAngle * random.random()
+
+
 class LinearMotion(object):
     def __init__(self, x, vx):
         self.sx = x
@@ -219,3 +269,11 @@ class TimeAverage2(object):
 
     def value(self):
         return (self.x.currValue, self.y.currValue)
+
+
+def clamp(low, val, high):
+    if val >= high:
+        return high
+    if val <= low:
+        return low
+    return val
