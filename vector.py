@@ -1,7 +1,7 @@
 #!python  -u
 
 import math
-#rename
+
 class Vector:
     'Represents a 2D vector.'
     def __init__(self, x = 0, y = 0):
