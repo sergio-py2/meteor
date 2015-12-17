@@ -1,6 +1,8 @@
 #!python  -u
 #!/c/Python27/python.exe  -u
 
+from __future__ import division
+
 import os
 import sys
 
@@ -17,16 +19,16 @@ import timevars as tv
 import vector as vec
 from vector import Vector as Vec
 
-from gameassets import GameAssets
-
 import sprites
 from sprites import *
-
+from gameassets import GameAssets
 import shipsprite
+
+import geoip
 
 gApp = None
 gAssets = None
-
+gGeoData = {}
 
 # Define the application class
 
@@ -92,6 +94,7 @@ class GameWindow(pyglet.window.Window):
         self.state = GP_STARTING
         self.boom = None
         self.dyingTimer = None
+        self.gameOver = None
 
         props = WindowProps()
         props.windowWidth     = self.width
@@ -116,6 +119,7 @@ class GameWindow(pyglet.window.Window):
     def on_key_press(self, symbol, modifiers):
         #print "GameWindow.on_key_press", symbol
         if self.keys[key.Q]:
+            #print "State is %s" % gGeoData.get('state', 'unknown')
             pyglet.app.exit()        
     
 
@@ -128,13 +132,111 @@ class GameWindow(pyglet.window.Window):
 
         if state == GP_PLAYING:
             self.updatePlay(dt)
+
         elif state == GP_STARTING:
             self.state = GP_PLAYING
             self.updatePlay(dt)
+
         elif state == GP_DYING:
             self.updateDying(dt)
+
         elif state == GP_SHOWSCORE:
             pass
+
+
+    def updateDying(self, dt):
+        self.gameElements.update(dt)
+        self.updateViewport(dt)
+        self.dyingTimer.update(dt)
+
+        if self.dyingTimer.done() and self.boom is None:
+            p1 = self.gameElements.ship.getPosition()
+            self.boom = sprites.MultiExplosion(p1[0], p1[1], [0.0, 0.3, 0.5, 0.6, 1.0])
+
+        if self.boom is not None:
+            self.boom.update(dt)
+
+        if self.gameOver is not None:
+            self.gameOver.update(dt)
+
+            
+
+    def updatePlay(self, dt):
+        g = self.gameElements
+
+        # Elements that evolve pretty much by themselves.
+        g.update(dt)
+
+        # Use controls to update the ship.
+        if self.joystick is not None:
+            self.joystickUpdate(dt)
+        else:
+            self.keyboardUpdate(dt)
+
+        if self.keys[key.M]:
+            print ""
+            for i,m  in enumerate(g.swarm.meteors):
+                print "Meteor % 2d: %s" %(i,m.dump())
+
+        if self.keys[key.K]:
+            self.spaceShipDeath()
+            self.gameOver = GameOver(self.props)
+            #self.boom = sprites.MultiExplosion(200, 150, [0.1, 0.3, 0.5, 0.6, 1.0])
+            #self.boom = sprites.MultiExplosion(200, 150, [0.1, 0.8, 1.2, 1.7, 2.0])
+
+
+        # Interactions
+        # We handle lazer blasts when they are created
+        # What else should go here?
+
+        self.updateViewport(dt)
+        ship = self.gameElements.ship 
+
+        # Check for hits on space ship
+        p1 = Vec(*ship.getPosition())
+        r1 = ship.getRadius()
+
+        prevMinD = 1000000 #ifty
+        hitObj = None
+        severity = 1000.0
+
+        for o in g.swarm.objects():
+            p2 = Vec(*o.getCenter())
+            r2 = o.getRadius()
+
+            d = vec.Distance(p1, p2)
+            if d < r1 + r2 and d < prevMinD:
+                #print d, r1, r2
+                prevMinD = d
+                hitObj = o
+                severity = d/(r1+r2)
+
+        if hitObj is not None:
+            #print "Hit", severity
+            if severity > 0.8:
+                #print "graze", severity
+                pass
+            elif severity > 0.28:
+                # Shake
+                if self.shake is None:
+                    self.shake = tv.Shaker2(0.75, 10.0, 3.0)
+                    g.score.addScore([-1]*4)
+            else:
+                # Explode
+                self.spaceShipDeath()
+
+        posn = ship.getPosition()
+        g.swarm.spawnNew(posn, self.viewportOrigin)
+
+        g.radar.setNumItems( g.swarm.nItems())
+
+
+
+    def spaceShipDeath(self):
+        self.shake = tv.Shaker2(0.75, 22.0, 8.0)
+        self.gameElements.score.addScore([-2]*8)
+        self.state = GP_DYING
+        self.dyingTimer = tv.CountDownTimer(0.8)
 
     def updateViewport(self, dt):
         # Viewport tracks ship, roughly, i.e. it shift when ship gets near an edge.
@@ -179,84 +281,6 @@ class GameWindow(pyglet.window.Window):
 
             if not self.shake.alive:
                 self.shake = None
-
-    def updateDying(self, dt):
-        self.gameElements.update(dt)
-        self.updateViewport(dt)
-        self.dyingTimer.update(dt)
-
-        if self.dyingTimer.done() and self.boom is None:
-            p1 = self.gameElements.ship.getPosition()
-            self.boom = sprites.MultiExplosion(p1[0], p1[1], [0.0, 0.3, 0.5, 0.6, 1.0])
-
-        if self.boom is not None:
-            self.boom.update(dt)
-
-    def updatePlay(self, dt):
-        g = self.gameElements
-
-        # Elements that evolve pretty much by themselves.
-        g.update(dt)
-
-        # Use controls to update the ship.
-        if self.joystick is not None:
-            self.joystickUpdate(dt)
-        else:
-            self.keyboardUpdate(dt)
-
-        if self.keys[key.M]:
-            print ""
-            for i,m  in enumerate(g.swarm.meteors):
-                print "Meteor % 2d: %s" %(i,m.dump())
-
-        if self.keys[key.K] :
-            self.boom = sprites.MultiExplosion(200, 150, [0.1, 0.3, 0.5, 0.6, 1.0])
-            #self.boom = sprites.MultiExplosion(200, 150, [0.1, 0.8, 1.2, 1.7, 2.0])
-
-
-        # Interactions
-        # We handle lazer blasts when they are created
-        # What else should go here?
-
-        self.updateViewport(dt)
-        ship = self.gameElements.ship 
-
-        # Check for hits on space ship
-        p1 = Vec(*ship.getPosition())
-        r1 = ship.getRadius()
-
-        prevMinD = 1000000 #ifty
-        hitObj = None
-        severity = 1000.0
-
-        for o in g.swarm.objects():
-            p2 = Vec(*o.getCenter())
-            r2 = o.getRadius()
-
-            d = vec.Distance(p1, p2)
-            if d < r1 + r2 and d < prevMinD:
-                #print d, r1, r2
-                prevMinD = d
-                hitObj = o
-                severity = d/(r1+r2)
-
-        if hitObj is not None:
-            #print "Hit", severity
-
-            if severity > 0.8:
-                #print "graze", severity
-                pass
-            elif severity > 0.28:
-                # Shake
-                if self.shake is None:
-                    self.shake = tv.Shaker2(0.75, 10.0, 3.0)
-                    g.score.addScore([-1]*4)
-            else:
-                # Explode
-                self.shake = tv.Shaker2(0.75, 22.0, 8.0)
-                g.score.addScore([-2]*8)
-                self.state = GP_DYING
-                self.dyingTimer = tv.CountDownTime(0.8)
 
 
     def joystickUpdate(self, dt):
@@ -339,7 +363,7 @@ class GameWindow(pyglet.window.Window):
     def shoot(self):
         g = self.gameElements
         shot = g.ship.shoot(g.shotBatch)
-        gAssets.getSound('pew').play()
+        gAssets.getSound('lazer-shot-1').play()
 
         if shot is not None:
             g.shots.append(shot)
@@ -350,7 +374,7 @@ class GameWindow(pyglet.window.Window):
                 points = m.getValue()
                 g.score.addScore(points)
                 g.swarm.explode(m)
-                gAssets.getSound('boom').play()
+                gAssets.getSound('bomb-explosion-1').play()
 
                 #m.alive = False
                 #g.score.addScore(10)
@@ -407,6 +431,10 @@ class GameWindow(pyglet.window.Window):
         
         gl.glPopMatrix()
         g.score.draw()
+        g.radar.draw()
+
+        if self.gameOver is not None:
+            self.gameOver.draw()
 
 
 class GameElements(object):
@@ -421,8 +449,11 @@ class GameElements(object):
 
         self.ship = shipsprite.ShipSprite( x=w//2, y=h//2, w=w, h=h)
         self.score = ScoreBoard(self.props)
+        self.radar = MeteorRadar(self.props)
 
         self.swarm = Swarm(self.props)
+        posn = self.ship.getPosition()
+        self.swarm.initialMeteors(14, posn)
 
         self.shots = []
         self.shotBatch = pyglet.graphics.Batch()
@@ -481,15 +512,26 @@ def getJoystickPolarRight(js):
 def main():
     global gApp
     global gAssets
+    global gGeoData
 
     #LaserCannon.resetTime = 0.05
+
+    # Launch thread to try to get geoData
+    # Theoretically there's a race condition, but it's a one-shot thread
+    # so there's not much rish
+    worker = geoip.GeoIPFetchThread(gGeoData)
+    worker.setDaemon(True)
+    worker.start()
 
     if len(sys.argv) > 1 and sys.argv[1] == '-f':
         windowOpts = {'fullscreen': True}
     else:
         windowOpts = {'width': 1200, 'height': 600}
 
-    pyglet.resource.path = ['images', 'sounds', 'fonts']
+    for theme in ['ss', 'default']:
+        d = 'themes/' + theme + "/"
+        pyglet.resource.path += [d+'images', d+'sounds', d+'fonts']
+
     pyglet.resource.reindex()
 
     # Create the (few) global objects, and make sure they get set in the modules
@@ -502,13 +544,13 @@ def main():
     gApp = Application(windowOpts)
     
     # First time a sound is played there is a delay. So 
-    # play it now to get it over with. (Causes slight delay.)
+    # play it now to get it over with. (Causes slight delay. Or maybe not?)
     developing = False
     if not developing:
         player = pyglet.media.Player()
         player.volume = 0
-        player.queue(gAssets.getSound('pew'))
-        player.queue(gAssets.getSound('boom'))
+        player.queue(gAssets.getSound('lazer-shot-1'))
+        player.queue(gAssets.getSound('bomb-explosion-1'))
         #player.queue(gAssets.getSound('boom2'))
         player.play()
 

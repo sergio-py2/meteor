@@ -16,7 +16,7 @@ class GameAssets(object):
         self.images = {}
         self.sounds = {}
 
-        si = self.loadStdImage('space_ship_neon6.png', 'ship')
+        si = self.loadStdImage('spaceship.png', 'ship')
         si.anchor_x = si.width//2
         si.anchor_y = int(si.height * 0.35)
 
@@ -24,36 +24,36 @@ class GameAssets(object):
         # it in assets along with the image it's talking about.
         self.shipTipAboveCenter = si.height - si.anchor_y - 10 # there's a border
 
-        fl = self.loadStdImage('flames.png', 'flames')
+        fl = self.loadStdImage('spaceship_flames.png', 'flames')
         fl.anchor_x = si.anchor_x
         fl.anchor_y = si.anchor_y
 
-        li = self.loadStdImage('shot_neon.png', 'shot')
+        li = self.loadStdImage('lazer_shot.png', 'shot')
         li.anchor_x = 0
         li.anchor_y = li.height//2
 
         self.loadStdImage('red.png', 'dbg1')
         self.loadStdImage('green.png', 'dbg2')
 
-        self.loadStdImage('aster4.png', 'asteroid')
+        self.loadStdImage('asteroid1.png', 'asteroid')
 
-        self.loadStdImage('sirius-z1 - med.png', 'star-med-1')
-        self.loadStdImage('betelgeuse - med.png', 'star-med-2')
+        self.loadStdImage('star-med-1.png', 'star-med-1')
+        self.loadStdImage('star-med-2.png', 'star-med-2')
 
-        self.loadStdImage('sirius-z1 - lrg.png', 'star-lrg-1')
-        self.loadStdImage('betelgeuse - lrg.png', 'star-lrg-2')
+        self.loadStdImage('star-lrg-1.png', 'star-lrg-1')
+        self.loadStdImage('star-lrg-2.png', 'star-lrg-2')
 
         self.loadStdImage('star-sml-1.png', 'star-sml-1')
-        self.loadStdImage('star-sml-2b.png', 'star-sml-2')
+        self.loadStdImage('star-sml-2.png', 'star-sml-2')
         self.loadStdImage('star-sml-3.png', 'star-sml-3')
         self.loadStdImage('star-sml-4.png', 'star-sml-4')
-        self.loadStdImage('star-sml-5b.png', 'star-sml-5')
-        self.loadStdImage('star-sml-6b.png', 'star-sml-6')
+        self.loadStdImage('star-sml-5.png', 'star-sml-5')
+        self.loadStdImage('star-sml-6.png', 'star-sml-6')
 
         self.loadStdImage('image_2400e-Andromeda-Galaxy-b.png', 'galaxy')
 
 
-        exp = pyglet.resource.image('SkybusterExplosion-flip2.png')
+        exp = pyglet.resource.image('explosion-anim-1.png')
         nx, ny = 4, 5
         expSeq = pyglet.image.ImageGrid(exp, ny, nx)  # weird x,y ordering is right
 
@@ -69,11 +69,11 @@ class GameAssets(object):
         anim = pyglet.image.Animation.from_image_sequence(expSeq, blastTime/(nx*ny), False)
         self.images['explosion'] = anim
 
-        self.loadStdSound('pew4.mp3', 'pew')
+        self.loadStdSound('lazer-shot-1.mp3', 'lazer-shot-1')
         #self.pew = pyglet.resource.media('pew4.mp3', streaming=False)
         #self.pew = pyglet.resource.media('pew-js.wma', streaming=False)
         #self.loadStdSound('boom3.mp3', 'boom')
-        self.loadStdSound('Bomb_Exploding-Sound_Explorer-68256487-edit.mp3', 'boom')
+        self.loadStdSound('bomb-explosion-1.mp3', 'bomb-explosion-1')
         #self.loadStdSound('boom3-w-silence.mp3', 'boom3')
 
         # Get this font by specifying font_name='Orbitron', bold=True

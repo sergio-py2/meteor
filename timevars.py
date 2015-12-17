@@ -3,7 +3,28 @@
 import math
 import random
 
-class CountDownTime(object):
+class PLInterpolator(object):
+    """ Piece-wise linear interpolator. Not really a time-varying value,
+        this seems like a sensible place to put it. 
+    """
+    def __init__(self, nodes):
+        super(PLInterpolator, self).__init__()
+        self.nodes = nodes
+
+    def __call__(self, t):
+        # User is responsible for keeping t within range.
+        i = 0
+        while self.nodes[i][0] < t:
+            i += 1
+
+        # t between nodes i-1 and i
+        a = self.nodes[i-1]
+        b = self.nodes[i]
+        t = (t - a[0]) / (b[0] - a[0])
+        v = a[1] + t * (b[1] - a[1])
+        return v
+
+class CountDownTimer(object):
     ''' Simple countdown timer'''
     def __init__(self, lifetime):
         self.lifetime = lifetime
@@ -209,6 +230,9 @@ class TargetTracker(object):
     def setTarget(self, target):
         self.target = target
 
+    def setValue(self, value):
+        self.value = value
+
 
     def update(self, dt):
         # Returns updated value as a convenience
@@ -277,3 +301,9 @@ def clamp(low, val, high):
     if val <= low:
         return low
     return val
+
+
+def wrap( val, lo, hi):
+    t = (val - lo)/(hi - lo)
+    t = t - math.floor(t)
+    return lo + t * (hi - lo)

@@ -3,19 +3,29 @@
 from bbfreeze import Freezer
 import shutil
  
-destDir = 'dist4'
+destDir = 'dist'
 
 def main():
-    includes = []
+    #includes = ['requests',  'email.utils']
+    includes = ['requests',  'email.utils']
     excludes = ['_gtkagg', '_tkagg', 'bsddb', 'curses', 'email', 'pywin.debugger',
                 'pywin.debugger.dbgcon', 'pywin.dialogs', 'tcl', 'tk'
-                'Tkconstants', 'Tkinter']
+                'Tkconstants', 'Tkinter',]
      
     frz = Freezer(destDir, includes=includes, excludes=excludes)
      
     #frz.addScript("meteor.py", gui_only=True)
+
     frz.addScript("meteor.py")
     frz.addScript("meteor_fullscreen.py")
+    #frz.addScript("gameassets.py")
+    #frz.addScript("geoip.py")
+    #frz.addScript("shipsprite.py")
+    #frz.addScript("sprites.py")
+    #frz.addScript("timevars.py")
+    #frz.addScript("vector.py")
+
+    #frz.addScript("meteor_fullscreen.py")
     #frz.addScript("meteor_nosound.py")
     #frz.addScript("meteor_fullscreen_nosound.py")
      
@@ -26,9 +36,10 @@ def main():
     addFile('config.json')
     addFile('avbin.dll')
 
-    addDir('images')
-    addDir('fonts')
-    addDir('sounds')
+    #addDir('images')
+    #addDir('fonts')
+    #addDir('sounds')
+    addDir('themes')
 
 
 def addFile(f):
