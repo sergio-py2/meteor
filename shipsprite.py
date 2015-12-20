@@ -10,8 +10,9 @@ import timevars as tv
 
 import sprites
 from sprites import ShotSprite
+from gameassets import GameAssets
 
-gAssets = None
+#gAssets = None
 
 
 class ShipSprite(object):
@@ -19,13 +20,14 @@ class ShipSprite(object):
     
     def __init__(self, *args, **kwargs):
         #super(ShipSprite, self).__init__(self.__class__.image, x=kwargs['x'], y=kwargs['y'])
-        ga = gAssets
+        ga = GameAssets.Instance()
         x, y = kwargs['x'], kwargs['y']
-        self.spriteShip = pyglet.sprite.Sprite(gAssets.getImage('ship'), x=x, y=y)
+        self.spriteShip = pyglet.sprite.Sprite(ga.getImage('ship'), x=x, y=y)
         self.spriteFlames = pyglet.sprite.Sprite(ga.getImage('flames'), x=x, y=y)
         self.spriteFlames.opacity = 0
         self.motion = tv.ThrustMotionWithDrag( x, y)
         self.motion.setDrag(0.05)
+        self.tipOffset = ga.shipTipAboveCenter
 
         rotPull = 9000
         rotDrag = 800    
@@ -113,8 +115,8 @@ class ShipSprite(object):
         #fwd = self.angle - 90.0
 
         ux, uy = vec.uvec(th)
-        tipOffset = gAssets.shipTipAboveCenter
-        x,y = x + tipOffset*ux, y + tipOffset*uy
+        #tipOffset = gAssets.shipTipAboveCenter
+        x,y = x + self.tipOffset*ux, y + self.tipOffset*uy
 
         return ((x,y), th-90.0)
 

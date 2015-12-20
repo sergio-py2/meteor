@@ -1,83 +1,106 @@
 #!python -u
 
 import threading as thrd
-
+import time
 
 #import requests as rq
 import urllib2
 import xml.etree.ElementTree as et
 
+from singleton import Singleton
 
-def getGeoData(rv):
-    url1 = 'http://wtfismyip.com/xml'
-    yfia = 'your-fucking-ip-address'
+@Singleton
+class GeoIPData:
+    def __init__(self):
+        self.state =  None
+        self.lat =  None
+        self.lng =  None
+        self.mapUrl =  None
+        self.error =  None
+        self.done = False
 
-    url2 = 'http://www.freegeoip.net/xml/%s'
+    def launchFetchThread(self):
+        worker = GeoIPFetchThread(self)
+        worker.setDaemon(True)
+        worker.start()
 
-    #resp1 = rq.get(url1)
-    #root1 = et.fromstring(resp1.content)
+    def getGeoData(self):
+        url1 = 'http://wtfismyip.com/xml'
+        yfia = 'your-fucking-ip-address'
 
-    resp1 = urllib2.urlopen(url1)
-    root1 = et.fromstring(resp1.read())
+        url2 = 'http://www.freegeoip.net/xml/%s'
 
-    #print et.tostring(root)
+        #resp1 = rq.get(url1)
+        #root1 = et.fromstring(resp1.content)
 
-    ip = root1.find(yfia).text
+        resp1 = urllib2.urlopen(url1)
+        root1 = et.fromstring(resp1.read())
 
-    #print ip
+        #print et.tostring(root)
 
-    tUrl = url2 % ip
-    #resp2 = rq.get(tUrl)
-    #root2 = et.fromstring(resp2.content)
+        ip = root1.find(yfia).text
 
-    resp2 = urllib2.urlopen(tUrl)
-    root2 = et.fromstring(resp2.read())
+        #print ip
 
-    state = root2.find('RegionCode').text
-    lat   = root2.find('Latitude').text
-    lng   = root2.find('Longitude').text
+        tUrl = url2 % ip
+        #resp2 = rq.get(tUrl)
+        #root2 = et.fromstring(resp2.content)
 
-    #print et.tostring(root2)
+        resp2 = urllib2.urlopen(tUrl)
+        root2 = et.fromstring(resp2.read())
 
-    #print "IP: %s State: %s lat: %s lng: %s" % (ip, state, lat, lng)
+        state = root2.find('RegionCode').text
+        lat   = root2.find('Latitude').text
+        lng   = root2.find('Longitude').text
 
-    zoom = 13
-    mapUrl = 'https://www.google.com/maps/preview/@%s,%s,%dz' % (lat, lng, zoom)
-    #print mapUrl
+        #print et.tostring(root2)
+
+        #print "IP: %s State: %s lat: %s lng: %s" % (ip, state, lat, lng)
+
+        zoom = 13
+        mapUrl = 'https://www.google.com/maps/preview/@%s,%s,%dz' % (lat, lng, zoom)
+        #print mapUrl
 
 
-    mapUrl2 =  'http://google.com/maps/?q=%s,%s' % (lat,lng)
-    #print mapUrl2
+        mapUrl2 =  'http://google.com/maps/?q=%s,%s' % (lat,lng)
+        #print mapUrl2
 
-    rv['state'] = state
-    rv['lat'] = lat
-    rv['lng'] = lng
-    rv['mapUrl'] = mapUrl
+        self.state =  state
+        self.lat =  lat
+        self.lng =  lng
+        self.mapUrl =  mapUrl
 
 
 
 class GeoIPFetchThread(thrd.Thread):
-    def __init__(self, returnValueHolder):
+    def __init__(self, geoIP):
         thrd.Thread.__init__(self)
-        self.returnValueHolder = returnValueHolder
+        self.geoIP = geoIP
 
     def run(self):
-        rv = self.returnValueHolder
-        rv['state'] = None
-        rv['lat'] = None
-        rv['lng'] = None
-        rv['mapUrl'] = None
-        rv['error'] = None
+        #rv = self.returnValueHolder
+        #rv['state'] = None
+        #rv['lat'] = None
+        #rv['lng'] = None
+        #rv['mapUrl'] = None
+        #rv['error'] = None
 
         try:
-            getGeoData(self.returnValueHolder)
+            self.geoIP.getGeoData()
         except Exception as e:
-            rv['error'] = e
+            self.geoIP.error = e
+
+        self.geoIP.done = True
+
 
 def main():
-    rv = {}
-    getGeoData(rv)
-    print rv
+    info = GeoIPData.Instance()
+    info.launchFetchThread()
+
+    while not info.done:
+        time.sleep(1.0)
+
+    print vars(info)
 
 if __name__ == '__main__':
     main()

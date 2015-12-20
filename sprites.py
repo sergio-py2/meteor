@@ -9,8 +9,10 @@ import pyglet.gl as gl
 import vector as vec
 import timevars as tv
 
+from gameassets import GameAssets
 
-gAssets = None
+
+#gAssets = None
 
 class Swarm(object):
     ''' All the non-player objects (not sure if ShotSprites are included)'''
@@ -196,7 +198,7 @@ class MeteorSprite(pyglet.sprite.Sprite):
 
     def __init__(self, name, x, y, speed, batch, props):
         #global gAssets
-        super(self.__class__, self).__init__(gAssets.getImage(name), x,y, batch=batch)
+        super(self.__class__, self).__init__(GameAssets.Instance().getImage(name), x,y, batch=batch)
         self.props = props
         self.name = name
 
@@ -248,7 +250,7 @@ class ShotSprite(pyglet.sprite.Sprite):
     lifeTime = 0.08
 
     def __init__(self, position, angle, batch):
-        ga = gAssets
+        ga = GameAssets.Instance()
         super(ShotSprite, self).__init__(ga.getImage('shot'), *position, batch=batch)
         self.position = position
         self.angle = angle
@@ -305,7 +307,7 @@ class MultiExplosion(object):
         self.sprites.append(s)
 
         player = pyglet.media.Player()
-        player.queue(gAssets.getSound('bomb-explosion-1'))
+        player.queue(GameAssets.Instance().getSound('bomb-explosion-1'))
         player.play()
         self.players.append(player)
 
@@ -325,7 +327,7 @@ class ExplosionSprite(pyglet.sprite.Sprite):
     lifeTime = 0.75 # Just a guess, doesn't matter as it's only used for clean-up
 
     def __init__(self, x, y):
-        super(self.__class__, self).__init__(gAssets.getImage('explosion'), x, y)
+        super(self.__class__, self).__init__(GameAssets.Instance().getImage('explosion'), x, y)
 
         th = 360*random.random()
         u,v = vec.uvec(th)
@@ -555,7 +557,7 @@ class GameOver(object):
 class StarField(object):
 
     def __init__(self, w, h ):
-        ga = gAssets
+        ga = GameAssets.Instance()
         self.stars = []
         self.batch = pyglet.graphics.Batch()
 
@@ -602,7 +604,7 @@ class StarField(object):
 class DgbSquare(pyglet.sprite.Sprite):
 
     def __init__(self, x, y):
-        super(DgbSquare, self).__init__(gAssets.getImage('dbg1'), x,y)
+        super(DgbSquare, self).__init__(GameAssets.Instance().getImage('dbg1'), x,y)
         self.xPos = x
         self.yPos = y
 
@@ -617,7 +619,7 @@ class DgbSquare(pyglet.sprite.Sprite):
 class DgbSquare2(pyglet.sprite.Sprite):
 
     def __init__(self, x, y):
-        super(self.__class__, self).__init__(gAssets.getImage('dbg2'), x,y)
+        super(self.__class__, self).__init__(GameAssets.Instance().getImage('dbg2'), x,y)
         d = 300
         p = 2000
         critP = d*d/4

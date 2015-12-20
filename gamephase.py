@@ -16,7 +16,8 @@ import sprites
 import gameelements
 import screenobjects as scrob
 
-gGeoData = None
+from geoip import GeoIPData
+from gameassets import GameAssets
 
 class GamePhase(object):
     """ Abstract base class for one phase of a game."""
@@ -114,7 +115,7 @@ class PlayPhase(GamePhase):
 
                 p1 = self.gameElements.ship.getPosition()
                 self.boom = sprites.MultiExplosion(p1[0], p1[1], [0.0, 0.3, 0.5, 0.6, 1.0])
-                gAssets.getSound('wilhelm').play()
+                GameAssets.Instance().getSound('wilhelm').play()
                 return
 
         # Regular game play
@@ -266,9 +267,10 @@ class PlayPhase(GamePhase):
             self.shoot()
 
     def shoot(self):
+        ga = GameAssets.Instance()
         g = self.gameElements
         shot = g.ship.shoot(g.shotBatch)
-        gAssets.getSound('lazer-shot-1').play()
+        ga.getSound('lazer-shot-1').play()
 
         if shot is not None:
             g.shots.append(shot)
@@ -279,7 +281,7 @@ class PlayPhase(GamePhase):
                 points = m.getValue()
                 g.score.addScore(points)
                 g.swarm.explode(m)
-                gAssets.getSound('bomb-explosion-1').play()
+                ga.getSound('bomb-explosion-1').play()
                 #print "killed meteor"
 
                 #m.alive = False
@@ -405,7 +407,7 @@ class GameOverPhase(GamePhase):
         if self.gameOverObject.done():
             # Go to the leader board
             score = g.score.value
-            state = gGeoData.get('state')
+            state = GeoIPData.Instance().state
             d = (None, state, score)
             lb = LeaderBoardPhase(self.windowProps, self.evtSrc, d)
             return lb
@@ -413,7 +415,8 @@ class GameOverPhase(GamePhase):
         if userInput.keys[key.SPACE]:
             # Go on to another game
             newGe = gameelements.GameElements(self.windowProps)
-            newGe.populateGame( gAssets )
+            ga = GameAssets.Instance()
+            newGe.populateGame( ga )
 
             gp = PlayPhase(newGe, self.windowProps, self.evtSrc)
             print "New game"
@@ -675,12 +678,13 @@ class LeaderBoardPhase(GamePhase):
                     color=color, batch=self.bottomBatch)
 
 
+        ga = GameAssets.Instance()
         if self.madeLeaderBoard:
             self.done = False
-            self.fanfare = gAssets.getSound('tada')
+            self.fanfare = ga.getSound('tada')
         else:
             self.done = True
-            self.fanfare = gAssets.getSound('ohno')
+            self.fanfare = ga.getSound('ohno')
 
     def start(self):
         self.fanfare.play()
@@ -691,7 +695,7 @@ class LeaderBoardPhase(GamePhase):
             if k[key.SPACE]:
                 # Start a new game
                 newGe = gameelements.GameElements(self.windowProps)
-                newGe.populateGame( gAssets )
+                newGe.populateGame( GameAssets.Instance() )
 
                 gp = PlayPhase(newGe, self.windowProps, self.evtSrc)
                 return gp

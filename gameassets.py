@@ -1,16 +1,18 @@
 #!python -u
 
+from singleton import Singleton
 import math
 
 import pyglet
 
-
+@Singleton
 class GameAssets(object):
     """ Loads images, sounds, etc. from files and holds them as pyglet-compatible
         objects. """
 
     def __init__(self):
-        super(GameAssets, self).__init__()
+        #super(GameAssets, self).__init__()
+        pass
 
     def loadAssets(self):
         self.images = {}

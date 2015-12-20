@@ -16,8 +16,9 @@ def main():
      
     #frz.addScript("meteor.py", gui_only=True)
 
-    frz.addScript("meteor.py")
-    frz.addScript("meteor_fullscreen.py")
+    frz.addScript("play_development.py")
+    frz.addScript("play_fullscreen.py", gui_only=True)
+    frz.addScript("play_windowed.py", gui_only=True)
     #frz.addScript("gameassets.py")
     #frz.addScript("geoip.py")
     #frz.addScript("shipsprite.py")

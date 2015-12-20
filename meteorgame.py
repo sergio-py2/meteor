@@ -3,34 +3,23 @@
 
 from __future__ import division
 
-import os
+#import os
 import sys
 
 import pyglet
 import pyglet.gl as gl
-import pyglet.window.mouse as mouse
+#import pyglet.window.mouse as mouse
 import pyglet.window.key as key
-import pyglet.font.ttf
 
-import random
-import math
-
-import timevars as tv
-import vector as vec
-from vector import Vector as Vec
-
-import sprites
-from sprites import *
-from gameassets import GameAssets
-import shipsprite
+#import sprites
+#from sprites import *
+#import shipsprite
 import gamephase
 import gameelements
 
-import geoip
+from gameassets import GameAssets
+from geoip import GeoIPData
 
-gApp = None
-gAssets = None
-gGeoData = {}
 
 # Objects that just hold a bunch of attributes
 class Attributes(object):
@@ -69,22 +58,14 @@ class WindowProps(object):
     def __init__(self):
         pass
 
-# Game Phases
-(
-    GP_STARTING,
-    GP_PLAYING,
-    GP_DYING,
-    GP_SHOWSCORE
-) = range(1,5)
-
 class GameWindow(pyglet.window.Window):
     """A single window with a game taking place inside it"""
     
     def __init__(self, joystick, **kwargs):
         # These might not do anything here.
-        gl.glClearColor(0.0, 0.0, 0.0, 0.0)
-        gl.glEnable( gl.GL_BLEND)
-        gl.glBlendFunc( gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        #gl.glClearColor(0.0, 0.0, 0.0, 0.0)
+        #gl.glEnable( gl.GL_BLEND)
+        #gl.glBlendFunc( gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
 
         super(GameWindow, self).__init__(**kwargs)        
         
@@ -95,10 +76,6 @@ class GameWindow(pyglet.window.Window):
         self.set_mouse_visible(False)
 
         self.gameTime = 0.0
-        self.state = GP_STARTING
-        #self.boom = None
-        #self.dyingTimer = None
-        self.gameOver = None
 
         props = WindowProps()
         props.windowWidth     = self.width
@@ -109,7 +86,8 @@ class GameWindow(pyglet.window.Window):
         #self.gameElements.populateGame( gAssets )
 
         ge = gameelements.GameElements(props)
-        ge.populateGame( gAssets )
+        #ge.populateGame( gAssets )
+        ge.populateGame( GameAssets.Instance() )
 
         self.userInput = Attributes()
 
@@ -138,14 +116,12 @@ class GameWindow(pyglet.window.Window):
     #     Most of the game logic goes here
     # --------------------------------------------
     def update(self, dt):
-        k = self.userInput.keys 
+        # Ctrl-Q always lets you abort.
+        k = self.userInput.keys
         if k[key.Q] and (k[key.LCTRL] or k[key.RCTRL]):
-            #print "State is %s" % gGeoData.get('state', 'unknown')
-            #print "Q", self.userInput.keys[key.LCTRL]
             pyglet.app.exit()        
 
         self.gameTime += dt
-        state = self.state
         
         gp = self.gamePhase.update(dt, self.userInput)
 
@@ -161,15 +137,6 @@ class GameWindow(pyglet.window.Window):
             
     def on_draw(self):
         self.gamePhase.draw(self)
-
-
-
-
-def update(dt):
-    #print "update", dt
-
-    global gApp
-    gApp.update(dt)
 
 
 def getJoystickPolarLeft(js):
@@ -192,26 +159,10 @@ def getJoystickPolarRight(js):
 
 
 
-def main():
-    global gApp
-    global gAssets
-    global gGeoData
-
+def play(windowOpts):
     #LaserCannon.resetTime = 0.05
 
-    # Launch thread to try to get geoData
-    # Theoretically there's a race condition, but it's a one-shot thread
-    # so there's not much rish
-    worker = geoip.GeoIPFetchThread(gGeoData)
-    worker.setDaemon(True)
-    worker.start()
-
-    gamephase.gGeoData = gGeoData
-
-    if len(sys.argv) > 1 and sys.argv[1] == '-f':
-        windowOpts = {'fullscreen': True}
-    else:
-        windowOpts = {'width': 1200, 'height': 600}
+    GeoIPData.Instance().launchFetchThread()
 
     for theme in ['user01', 'default']:
         d = 'themes/' + theme + "/"
@@ -219,15 +170,10 @@ def main():
 
     pyglet.resource.reindex()
 
-    # Create the (few) global objects, and make sure they get set in the modules
-    # that need them. (This is such bad programming)
-    gAssets = GameAssets()
-    gAssets.loadAssets()
-    sprites.gAssets = gAssets
-    shipsprite.gAssets = gAssets
-    gamephase.gAssets = gAssets
+    ga = GameAssets.Instance()
+    ga.loadAssets()
 
-    gApp = Application(windowOpts)
+    app = Application(windowOpts)
     
     # First time a sound is played there is a delay. So 
     # play it now to get it over with. (Causes slight delay. Or maybe not?)
@@ -235,14 +181,15 @@ def main():
     if not developing:
         player = pyglet.media.Player()
         player.volume = 0
-        player.queue(gAssets.getSound('lazer-shot-1'))
-        player.queue(gAssets.getSound('bomb-explosion-1'))
+        player.queue(ga.getSound('lazer-shot-1'))
+        player.queue(ga.getSound('bomb-explosion-1'))
         #player.queue(gAssets.getSound('boom2'))
         player.play()
 
 
     pyglet.clock.set_fps_limit(60)
-    pyglet.clock.schedule_interval(update, 1/60.)
+    #pyglet.clock.schedule_interval(update, 1/60.)
+    pyglet.clock.schedule_interval(app.update, 1/60.)
 
     pyglet.app.run()
 
