@@ -41,6 +41,12 @@ class Swarm(object):
             (1000,500),
             ])
 
+        self.meteorPool = (
+            20 * ['asteroid-1'] +
+            10 * ['asteroid-2'] +
+             5 * ['asteroid-3']
+            )
+
     def initialMeteors(self, n, shipPosition):
 
         w = self.props.windowWidth
@@ -57,8 +63,9 @@ class Swarm(object):
                 continue
             
             speed = random.gauss(100, 30)
+            name = random.choice(self.meteorPool)
 
-            m = MeteorSprite(x, y, speed, self.meteorBatch, self.props)
+            m = MeteorSprite(name, x, y, speed, self.meteorBatch, self.props)
             self.meteors.append(m)
 
 
@@ -95,9 +102,7 @@ class Swarm(object):
 
         self.explosions = [e for e in self.explosions if e.alive == True]
 
-        nMeteors = len(self.meteors)
-
-        #self.expl.update(dt)
+        #nMeteors = len(self.meteors)
 
 
     def spawnNew(self, shipPosition, viewportOrigin):
@@ -105,17 +110,18 @@ class Swarm(object):
         # but if it doesn't on this go-around is just returns, as it will
         # be called again fairly soon.
         #targetN = 15
-        targetN = self.meteorCountCurve(self.gameTime)
+        targetN = int(self.meteorCountCurve(self.gameTime))
 
         if len(self.meteors) >= targetN:
             return
+        #print "Have", len(self.meteors), "meteors, want", targetN
 
         w = self.props.windowWidth
         h = self.props.windowHeight
 
         x = None
         y = None
-        offset = 50
+        offset = 250
 
         side = random.randint(0,3)
         # side selects (left, right, bottom, top) 
@@ -136,10 +142,15 @@ class Swarm(object):
             else:
                 y = viewportOrigin[1] + h + offset
 
+        # Make sure it's within the meteor field
+        if x < -w or y < -h or x > 2*w or y > 2*h:
+            return
+
         speedBase = self.meteorSpeedCurve(self.gameTime)
         speed = random.gauss(speedBase, 30)
+        name = random.choice(self.meteorPool)
 
-        m = MeteorSprite(x, y, speed, self.meteorBatch, self.props)
+        m = MeteorSprite(name, x, y, speed, self.meteorBatch, self.props)
         self.meteors.append(m)
 
         #print "generated meteor", shipPosition, viewportOrigin, sides[side], x, y
@@ -162,7 +173,7 @@ class Swarm(object):
             #print shipPosition, x, y
         
 
-    def findShotHit(self, shot):
+    def findShotHit(self, shot, margin):
         prevNearest = 1000000
         hitMeteor = None
 
@@ -172,7 +183,10 @@ class Swarm(object):
             x,y = m.getCenter()            
             across, along = vec.ray_x_pnt(rayO, rayU, vec.Vector(x,y))
 
-            if along > 0 and along < 1200 and across < m.getRadius() and along < prevNearest:
+            if (along > 0 and along < 1200 and 
+                across < m.getRadius() + margin and 
+                along < prevNearest):
+
                 hitMeteor = m
                 prevNearest = along
 
@@ -180,10 +194,11 @@ class Swarm(object):
 
 class MeteorSprite(pyglet.sprite.Sprite):
 
-    def __init__(self, x, y, speed, batch, props):
+    def __init__(self, name, x, y, speed, batch, props):
         #global gAssets
-        super(self.__class__, self).__init__(gAssets.getImage('asteroid'), x,y, batch=batch)
+        super(self.__class__, self).__init__(gAssets.getImage(name), x,y, batch=batch)
         self.props = props
+        self.name = name
 
         th = 360*random.random()
         u,v = vec.uvec(th)
@@ -278,6 +293,7 @@ class MultiExplosion(object):
             s.update(dt)
 
         if self.nextTimeIdx >= len(self.times):
+            # Bug: doesn't allow time for last boom to play.
             self.alive = False
             return
 
@@ -296,6 +312,9 @@ class MultiExplosion(object):
         #gAssets.getSound('boom2').play()
 
         self.nextTimeIdx += 1
+
+    def done(self):
+        return not self.alive
         
 
     def draw(self):
@@ -327,8 +346,6 @@ class ExplosionSprite(pyglet.sprite.Sprite):
             self.alive = False
 
 
-
-
 # Not exactly sprites down here, just other things that decorate the screen
 
 class ScoreBoard(pyglet.text.Label):
@@ -355,10 +372,6 @@ class ScoreBoard(pyglet.text.Label):
         self.pendingBumps = []
         self.timeSinceBump = 10000.0 # infinity
         self.justBumped = False
-
-    def incrOutOfXXX(self, x):
-        self.outOf += x
-        self.text = "%d / %d" % (self.value, self.outOf)
 
 
     def addScore(self, bumps):
@@ -403,21 +416,22 @@ class MeteorRadar(object):
         super(MeteorRadar, self).__init__()
         self.props = props
 
-        self.number = pyglet.text.Label(
-            text="", font_name='Orbitron',  bold=True, font_size=24,
-            anchor_x = "right", anchor_y="bottom",
-            color=(255,255,0, 200),
-            x=75,
-            y=10
-            )
+        commonOpts = {
+            'font_name': 'Orbitron', 
+            'bold': True, 
+            'font_size': 24,
+            'color': (255,255,0, 200),
+            'text': ""}
 
-        self.text = pyglet.text.Label(
-            text="", font_name='Orbitron',  bold=True, font_size=16,
-            anchor_x = "left", anchor_y="bottom",
-            color=(255,255,0, 200),
-            x=80,
-            y=10
-            )
+        t = commonOpts.copy()
+        t.update( {'anchor_x': "right", 'anchor_y': "bottom", 'x':75, 'y':10})
+
+        self.number = pyglet.text.Label(**t)
+
+        t = commonOpts.copy()
+        t.update( {'anchor_x': "left", 'anchor_y': "bottom", 'x':80, 'y':10})
+
+        self.text = pyglet.text.Label(**t)
 
         self.nItems = 0
 
@@ -429,8 +443,69 @@ class MeteorRadar(object):
         if n == self.nItems:
             return
 
+        self.nItems = n
         self.number.text = str(n)
-        self.text.text = " items in radar range"
+        self.text.text = " meteors"
+        #print "set radar to", n
+
+class Timer(object):
+    """docstring for MeteorRader"""
+    def __init__(self, props):
+        super(Timer, self).__init__()
+        self.props = props
+        self.seconds = 0.0
+        self.currDisplaySeconds = -1
+
+        xPos = props.windowWidth - 100
+
+        commonOpts = {
+            'font_name': 'Orbitron', 
+            'bold': True, 
+            'font_size': 16,
+            'color': (255,255,0, 200),
+            'text': "",
+            'y': 10}
+
+        t = commonOpts.copy()
+        t.update( {'x':xPos})
+
+        self.min = pyglet.text.Label(**t)
+
+        xPos += 22
+        t.update( {'x':xPos, 'text': ":"})
+        self.colon = pyglet.text.Label(**t)
+
+        xPos += 10
+        t.update( {'x':xPos, 'text': ""})
+        self.sec10s = pyglet.text.Label(**t)
+
+        xPos += 22
+        t.update( {'x':xPos})
+        self.sec1s = pyglet.text.Label(**t)
+
+        self.nItems = 0
+
+    def update(self, dt):
+        self.seconds += dt
+        secondsInt = int(self.seconds)
+        if secondsInt != self.currDisplaySeconds:
+            m,s = divmod(secondsInt, 60)
+            s10, s1 = divmod(s, 10)
+            self.min.text      = str(m)
+            self.sec10s.text   = str(s10)
+            self.sec1s.text    = str(s1)
+
+
+
+    def draw(self):
+
+
+
+
+        self.min.draw()
+        self.colon.draw()
+        self.sec10s.draw()
+        self.sec1s.draw()
 
 class GameOver(object):
     """docstring for GameOver"""
@@ -453,26 +528,20 @@ class GameOver(object):
         self.timeAlive = 0
         self.zoom    = tv.PLInterpolator([(0,0.2), (1,0.3), (2,0.5), (3,1.0), (1000,1.0)])
         self.height  = tv.PLInterpolator([(0,150), (2,450), (3,320), (1000,370)])
+        self.height.shift(0,props.windowHeight-660)
+        self.alive = True
 
 
     def update(self, dt):
         self.timeAlive += dt
+        if self.timeAlive > 4.0:
+            self.alive = False
         
-        #t = self.fontSize(self.timeAlive)
-        #self.text.font_size = int(t)
-
-        #h = self.height(self.timeAlive)
-        #self.text.y = h
-
-        #self.text.text = "%d" % t
-        #print "update"
-
     def draw(self):
         a = self.zoom(self.timeAlive)
         h = self.height(self.timeAlive)
 
         gl.glPushMatrix()
-
         gl.glTranslatef(self.props.windowWidth//2, h, 0)
         gl.glScalef(a,a,a)
 
@@ -480,7 +549,8 @@ class GameOver(object):
         
         gl.glPopMatrix()
 
-        
+    def done(self):
+        return not self.alive
 
 class StarField(object):
 

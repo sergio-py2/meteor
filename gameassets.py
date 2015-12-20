@@ -35,7 +35,11 @@ class GameAssets(object):
         self.loadStdImage('red.png', 'dbg1')
         self.loadStdImage('green.png', 'dbg2')
 
-        self.loadStdImage('asteroid1.png', 'asteroid')
+        self.loadStdImage('asteroid-1.png', 'asteroid-1')
+        self.loadStdImage('asteroid-2.png', 'asteroid-2')
+        self.loadStdImage('asteroid-3.png', 'asteroid-3')
+        #self.loadStdImage('asteroid1.png', 'asteroid')
+        #self.loadStdImage('asteroid1.png', 'asteroid')
 
         self.loadStdImage('star-med-1.png', 'star-med-1')
         self.loadStdImage('star-med-2.png', 'star-med-2')
@@ -74,6 +78,9 @@ class GameAssets(object):
         #self.pew = pyglet.resource.media('pew-js.wma', streaming=False)
         #self.loadStdSound('boom3.mp3', 'boom')
         self.loadStdSound('bomb-explosion-1.mp3', 'bomb-explosion-1')
+        self.loadStdSound('wilhelm.mp3', 'wilhelm')
+        self.loadStdSound('tada.mp3', 'tada')
+        self.loadStdSound('oh_no.mp3', 'ohno')
         #self.loadStdSound('boom3-w-silence.mp3', 'boom3')
 
         # Get this font by specifying font_name='Orbitron', bold=True

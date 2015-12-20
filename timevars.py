@@ -3,6 +3,27 @@
 import math
 import random
 
+class Blinker(object):
+    """docstring for Blinker"""
+    def __init__(self, period):
+        super(Blinker, self).__init__()
+        self.switchTime = period/2.
+        self.timeSinceSwitch = 0.0
+        self.state = True
+
+    def start(self):
+        self.running = True
+
+    def update(self, dt):
+        self.timeSinceSwitch += dt
+        if self.timeSinceSwitch >= self.switchTime:
+            self.state = not self.state
+            self.timeSinceSwitch -= self.switchTime
+
+    def isOn(self):
+        return self.state
+
+
 class PLInterpolator(object):
     """ Piece-wise linear interpolator. Not really a time-varying value,
         this seems like a sensible place to put it. 
@@ -24,20 +45,31 @@ class PLInterpolator(object):
         v = a[1] + t * (b[1] - a[1])
         return v
 
+    def shift(self, xShift, yShift):
+        for i, pt in enumerate(self.nodes):
+            self.nodes[i] = (pt[0]+xShift, pt[1]+yShift)
+
 class CountDownTimer(object):
     ''' Simple countdown timer'''
-    def __init__(self, lifetime):
+    def __init__(self, lifetime, running=True):
         self.lifetime = lifetime
         self.timeAlive = 0.0
+        self.running = running
         self.alive = True
 
+    def start(self):
+        self.running = True
+
     def update(self, dt):
+        if not self.running:
+            return
+
         self.timeAlive += dt
         if self.timeAlive > self.lifetime:
             self.alive = False
 
     def done(self):
-        return not self.alive
+        return self.running and not self.alive
 
 
 class Shaker(object):
