@@ -60,5 +60,7 @@ target/
 resources_scratch
 dist
 junk
+*.dll
+leaderboard.dat
 
 
