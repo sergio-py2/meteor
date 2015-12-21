@@ -14,7 +14,7 @@ from vector import Vector as Vec
 import timevars as tv
 import sprites
 import gameelements
-import screenobjects as scrob
+import activeobjects as ao
 
 from geoip import GeoIPData
 from gameassets import GameAssets
@@ -49,12 +49,17 @@ class GamePhase(object):
 
 
 
-class PlayPhase(GamePhase):
-    def __init__(self, gameElements, windowProps, evtSrc ):
+
+class PlayPhaseBase(GamePhase):
+    def __init__(self, windowProps, evtSrc ):
         #super(GamePhase, self).__init__()
-        self.gameElements = gameElements
         self.windowProps = windowProps
         self.evtSrc = evtSrc
+
+        self.gameElements = gameelements.GameElements(windowProps)
+        self.gameElements.populateGame( GameAssets.Instance() )
+
+        #self.gameElements = gameElements
 
         self.shotMargin = 20
 
@@ -62,23 +67,18 @@ class PlayPhase(GamePhase):
         self.destinationTracker = tv.TimeAverage2(0.7, *self.gameElements.ship.getPosition())
 
         self.shake = None
-        self.boom = None
+        #self.boom = None
 
         # Explosion timer + boom is messy and should be replaced when
         # we get event chaining.
+        # ---
         # When we detect the ship dying we set this to non-None
-        self.shipExplosionTimer = None
-        self.boom = None
+        #self.shipExplosionTimer = None
+        #self.boom = None
 
-        #l = LeaderBoardData()
-        #l.leaders.extend([
-        #    ("Alan", "CA", 1234),
-        #    ("Betty", "CA", 223),
-        #    ("Carl", "CA", 12),
-        #    ("Desi", "CA", 8),
-        #    ])
-        #l.write("ldr_test.dat")
-
+        self.endGame = None
+        self.drawFrameMarker = None
+        self.explodedMarker = None
 
     def start(self):
         pass
@@ -89,34 +89,10 @@ class PlayPhase(GamePhase):
         # Elements that evolve pretty much by themselves.
         g.update(dt)
 
-
         # End of game display
-        if self.boom is not None:
-            if not self.boom.done():
-                self.boom.update(dt)
-                return
-            else:
-                # Play Phase is done
-                gp = GameOverPhase(self.gameElements, 
-                    self.windowProps, 
-                    self.viewportOrigin, 
-                    self.evtSrc)
-                return gp
+        if self.endGame is not None:
+            self.endGame.update(dt, userInput)
 
-        g.timer.update(dt)
-
-        if self.shipExplosionTimer is not None:
-            if not self.shipExplosionTimer.done():
-                self.shipExplosionTimer.update(dt)
-                return
-            else:
-                # Timer done, make boom
-                self.shake = None
-
-                p1 = self.gameElements.ship.getPosition()
-                self.boom = sprites.MultiExplosion(p1[0], p1[1], [0.0, 0.3, 0.5, 0.6, 1.0])
-                GameAssets.Instance().getSound('wilhelm').play()
-                return
 
         # Regular game play
         # Use controls to update the ship.
@@ -133,9 +109,6 @@ class PlayPhase(GamePhase):
         if userInput.keys[key.K]:
             pass
             self.spaceShipDeath()
-            #self.gameOver = GameOver(self.props)
-            #self.boom = sprites.MultiExplosion(200, 150, [0.1, 0.3, 0.5, 0.6, 1.0])
-            #self.boom = sprites.MultiExplosion(200, 150, [0.1, 0.8, 1.2, 1.7, 2.0])
 
         # Interactions
         # We handle lazer blasts when they are created
@@ -172,7 +145,7 @@ class PlayPhase(GamePhase):
                 # Shake
                 if self.shake is None:
                     self.shake = tv.Shaker2(0.75, 10.0, 3.0)
-                    g.score.addScore([-1]*4)
+                    self.spaceShipShake()
             else:
                 # Explode
                 self.spaceShipDeath()
@@ -180,13 +153,7 @@ class PlayPhase(GamePhase):
         posn = ship.getPosition()
         g.swarm.spawnNew(posn, self.viewportOrigin)
 
-        g.radar.setNumItems( g.swarm.nItems())
-
-    def spaceShipDeath(self):
-        self.shake = tv.Shaker2(0.75, 22.0, 8.0)
-        self.gameElements.score.addScore([-2]*8)
-        #self.state = GP_DYING
-        self.shipExplosionTimer = tv.CountDownTimer(0.2)
+        #self.radar.setNumItems( g.swarm.nItems())
 
 
     def joystickUpdate(self, dt, joystick):
@@ -278,14 +245,16 @@ class PlayPhase(GamePhase):
             m = g.swarm.findShotHit(shot, self.shotMargin)
             
             if m is not None:
-                points = m.getValue()
-                g.score.addScore(points)
-                g.swarm.explode(m)
-                ga.getSound('bomb-explosion-1').play()
-                #print "killed meteor"
+                self.processHit(m)
 
-                #m.alive = False
-                #g.score.addScore(10)
+    def processHit(self, meteor):
+        ga = GameAssets.Instance()
+        g = self.gameElements
+
+        points = meteor.getValue()
+        self.score.addScore(points)
+        g.swarm.explode(meteor)
+        ga.getSound('bomb-explosion-1').play()
 
     def updateViewport(self, dt):
         # Viewport tracks ship, roughly, i.e. it shift when ship gets near an edge.
@@ -333,16 +302,15 @@ class PlayPhase(GamePhase):
             if not self.shake.alive:
                 self.shake = None
 
-
-
+    # XXX You're in the base class - remove this
     def draw(self, window):
-        # I really don't know what these are doing, and if there's any difference having them
-        # here instead of just once at the top.
-        gl.glClearColor(0.0, 0.0, 0.0, 0.0)
-        #gl.glClearColor(0.0, 0.0, 0.08, 1.0)
-        gl.glEnable( gl.GL_BLEND)
-        #gl.glBlendFunc( gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
-        window.clear()
+
+        self.drawSpace(window)
+
+        if self.drawFrameMarker and self.drawFrameMarker.done():
+            self.endGame.draw(window)
+
+    def drawSpace(self, window):
 
         gl.glPushMatrix()
 
@@ -360,88 +328,163 @@ class PlayPhase(GamePhase):
             gl.glRotatef(self.shake.getAngle(), 0, 0, 1)
             gl.glTranslatef(-vpc_x, -vpc_y, 0.0)
         
-        g = self.gameElements
+        ge = self.gameElements
 
-        g.starField.draw()
-        g.swarm.draw()
+        ge.starField.draw()
+        ge.swarm.draw()
 
-        if self.boom is None:
-            g.ship.draw()
-        else:
-            self.boom.draw()
+        #if self.boom is None:
+        if self.explodedMarker is None or not self.explodedMarker.done():
+            ge.ship.draw()
+        if self.drawFrameMarker and not self.drawFrameMarker.done():
+            self.endGame.draw(window)
 
-        for shot in g.shots:
+        for shot in ge.shots:
             if shot.alive:
                 shot.draw()
         
         gl.glPopMatrix()
-        g.score.draw()
-        g.radar.draw()
-        g.timer.draw()
 
-class GameOverEvent(GamePhase):
-    pass
 
-class GameOverPhase(GamePhase):
-    def __init__(self, gameElements, windowProps, viewportOrigin, evtSrc ):
-        self.gameElements = gameElements
-        self.windowProps = windowProps
-        self.viewportOrigin = viewportOrigin
-        self.evtSrc = evtSrc
+class PlayCountPhase(PlayPhaseBase):
+    def __init__(self, windowProps, evtSrc ):
+        super(PlayCountPhase, self).__init__( windowProps, evtSrc )
 
-        #self.gameOverSprite = sprites.GameOver(windowProps)
-        self.gameOverObject = scrob.XSO(windowProps)
+        self.score = sprites.ScoreBoard(windowProps)
+        self.radar = sprites.MeteorRadar(windowProps)
+        self.timer = tv.CountUpTimer(running=True)
+        self.timeDisplay = sprites.TimeDisplay(windowProps)
 
-        #self.x = scrob.SerialObjects( scrob.XSO(windowProps), scrob.XSO(windowProps))
+
 
     def update(self, dt, userInput):
-        g = self.gameElements
+        gp = super(PlayCountPhase, self).update(dt, userInput)
+        if gp is not None:
+            return gp
 
-        # Elements that evolve pretty much by themselves.
-        g.update(dt)
-        #self.gameOverSprite.update(dt)
-        self.gameOverObject.update(dt, userInput)
-        #self.x.update(dt, userInput)
+        self.score.update(dt)
 
-        #if self.x.done():
-        if self.gameOverObject.done():
+        if self.explodedMarker is None or not self.explodedMarker.done():
+            self.timer.update(dt)
+        self.timeDisplay.setTime( self.timer.time())
+        
+        self.radar.setNumItems( self.gameElements.swarm.nItems())
+
+        if self.endGame and self.endGame.done():
+
             # Go to the leader board
-            score = g.score.value
+            score = self.score.value
             state = GeoIPData.Instance().state
             d = (None, state, score)
             lb = LeaderBoardPhase(self.windowProps, self.evtSrc, d)
             return lb
 
-        if userInput.keys[key.SPACE]:
-            # Go on to another game
-            newGe = gameelements.GameElements(self.windowProps)
-            ga = GameAssets.Instance()
-            newGe.populateGame( ga )
-
-            gp = PlayPhase(newGe, self.windowProps, self.evtSrc)
-            print "New game"
-            return gp
 
     def draw(self, window):
         gl.glClearColor(0.0, 0.0, 0.0, 0.0)
         gl.glEnable( gl.GL_BLEND)
         window.clear()
 
-        gl.glPushMatrix()
-        gl.glTranslatef(-self.viewportOrigin[0], -self.viewportOrigin[1], 0.0)
-        
-        g = self.gameElements
-        g.starField.draw()
-        g.swarm.draw()
+        # Replace with call to drawSpace()
+        super(PlayCountPhase, self).draw(window)
 
+        self.score.draw()
+        self.radar.draw()
+        self.timeDisplay.draw()
+
+    def spaceShipShake(self):
+        self.score.addScore([-1]*4)
+
+    def spaceShipDeath(self):
+        if self.endGame:
+            return
+
+        shakeTime = 0.75
+        self.shake = tv.Shaker2(shakeTime, 22.0, 8.0)
+        self.score.addScore([-2]*8)
+        #self.state = GP_DYING
+        self.shipExplosionTimer = tv.CountDownTimer(0.2, running=True)
+
+        # Set up end-of-game ActiveObjects
+        p1 = self.gameElements.ship.getPosition()
+        explosionSprite = sprites.MultiExplosion(p1[0], p1[1], [0.0, 0.3, 0.5, 0.6, 1.0])
+
+        self.explodedMarker = ao.MarkerAO()
+        self.drawFrameMarker = ao.MarkerAO()
+
+        # need to replace this with a thunk that centers
+        #  explosion at ship location at that time
+        fnCallMarker = ao.MarkerAO()    
+
+        self.endGame = ao.SerialObjects(
+            ao.DelayAO(shakeTime),
+            fnCallMarker,
+            self.explodedMarker, 
+            ao.SpriteWrapperAO(explosionSprite),
+            self.drawFrameMarker,
+            ao.DelayAO(0.2),
+            ao.GameOverAO(self.windowProps)
+            )
+
+        self.endGame.start()
+
+
+
+class PlayTimePhase(PlayPhaseBase):
+    def __init__(self, windowProps, evtSrc ):
+        super(PlayTimePhase, self).__init__( windowProps, evtSrc )
+
+        #self.score = sprites.ScoreBoard(windowProps)
+        #self.radar = sprites.MeteorRadar(windowProps)
+        #self.timer = sprites.Timer(windowProps)
+        self.timeElapsed = tv.CountUpTimer(running=True)
+        self.timeElapsedDisplay = sprites.TimeDisplay(windowProps)
+        
+        self.timeRemaining = 20.0
+        self.timeRemainingDisplay = sprites.TimeDisplay(windowProps, displayTenths = True)
+
+
+
+    def update(self, dt, userInput):
+        gp = super(PlayTimePhase, self).update(dt, userInput)
+        if gp is not None:
+            return gp
+
+        self.timeElapsed.update(dt)
+        self.timeElapsedDisplay.setTime( self.timeElapsed.time())
+
+        self.timeRemaining -= dt
+        self.timeRemainingDisplay.setTime(self.timeRemaining)
+
+        #self.score.update(dt)
+        #self.timer.update(dt)
+        #self.radar.setNumItems( self.gameElements.swarm.nItems())
+
+    def draw(self, window):
+        gl.glClearColor(0.0, 0.0, 0.0, 0.0)
+        gl.glEnable( gl.GL_BLEND)
+        window.clear()
+
+        super(PlayTimePhase, self).draw(window)
+
+        self.timeElapsedDisplay.draw()
+        gl.glPushMatrix()
+        gl.glTranslatef(-250., 0., 0.)
+        self.timeRemainingDisplay.draw()
         gl.glPopMatrix()
 
-        g.score.draw()
-        g.radar.draw()
-        g.timer.draw()
+    def processHit(self, meteor):
+        ga = GameAssets.Instance()
+        g = self.gameElements
 
-        #self.gameOverSprite.draw()
-        self.gameOverObject.draw(window)
+        points = meteor.getValue()
+        self.timeRemaining += 1.5
+        #self.score.addScore(points)
+        g.swarm.explode(meteor)
+        ga.getSound('bomb-explosion-1').play()
+        
+
+
 
 class TextEntryWidget(object):
     """ Does not allow user to input an empty string. 
@@ -559,7 +602,7 @@ class LeaderBoardPhase(GamePhase):
     def __init__(self, windowProps, evtSrc, newData):
         self.windowProps = windowProps
         self.evtSrc = evtSrc
-        self.maxNScores = 7
+        self.maxNScores = 6
         
         self.done = False
         self.newData = newData  
@@ -694,10 +737,10 @@ class LeaderBoardPhase(GamePhase):
             k = userInput.keys
             if k[key.SPACE]:
                 # Start a new game
-                newGe = gameelements.GameElements(self.windowProps)
-                newGe.populateGame( GameAssets.Instance() )
+                #newGe = gameelements.GameElements(self.windowProps)
+                #newGe.populateGame( GameAssets.Instance() )
 
-                gp = PlayPhase(newGe, self.windowProps, self.evtSrc)
+                gp = PlayCountPhase(self.windowProps, self.evtSrc)
                 return gp
 
             return

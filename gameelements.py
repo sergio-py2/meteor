@@ -18,9 +18,9 @@ class GameElements(object):
         h = self.props.windowHeight
 
         self.ship = shipsprite.ShipSprite( x=w//2, y=h//2, w=w, h=h)
-        self.score = ScoreBoard(self.props)
-        self.radar = MeteorRadar(self.props)
-        self.timer = Timer(self.props)
+        #self.score = ScoreBoard(self.props)
+        #self.radar = MeteorRadar(self.props)
+        #self.timer = Timer(self.props)
 
         self.swarm = Swarm(self.props)
         posn = self.ship.getPosition()
@@ -46,7 +46,7 @@ class GameElements(object):
         self.shots = [sh for sh in self.shots if sh.alive == True]
 
         self.ship.update(dt)
-        self.score.update(dt)
+        #self.score.update(dt)
 
         #self.dbgSquare1.update(dt)
         #self.dbgSquare2.update(dt)

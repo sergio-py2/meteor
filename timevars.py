@@ -49,9 +49,31 @@ class PLInterpolator(object):
         for i, pt in enumerate(self.nodes):
             self.nodes[i] = (pt[0]+xShift, pt[1]+yShift)
 
+class CountUpTimer(object):
+    ''' Just keeps a running total of time elapsed since starting'''
+    def __init__(self, running=False):
+        self.timeAlive = 0.0
+        self.running = running
+        self.alive = True
+
+    def start(self):
+        self.running = True
+
+    def update(self, dt):
+        if not self.running:
+            return
+
+        self.timeAlive += dt
+
+    def time(self):
+        return self.timeAlive
+
+    def done(self):
+        return False
+
 class CountDownTimer(object):
     ''' Simple countdown timer'''
-    def __init__(self, lifetime, running=True):
+    def __init__(self, lifetime, running=False):
         self.lifetime = lifetime
         self.timeAlive = 0.0
         self.running = running

@@ -49,6 +49,7 @@ class Swarm(object):
              5 * ['asteroid-3']
             )
 
+
     def initialMeteors(self, n, shipPosition):
 
         w = self.props.windowWidth
@@ -66,8 +67,47 @@ class Swarm(object):
             
             speed = random.gauss(100, 30)
             name = random.choice(self.meteorPool)
+            th = 360*random.random()
+            u,v = vec.uvec(th)
 
-            m = MeteorSprite(name, x, y, speed, self.meteorBatch, self.props)
+            m = MeteorSprite(name, (x, y), (speed*u, speed*v), self.meteorBatch, self.props)
+            self.meteors.append(m)
+
+    def initialMeteors2(self, n, shipPosition):
+        # Marching lines of death
+
+        w = self.props.windowWidth
+        h = self.props.windowHeight
+
+        shipX, shipY = shipPosition
+        offset = 200
+        baseSpeed = 200
+        spacing = 80
+
+        for x in range(shipX-w//2, shipX+w//2, spacing):
+            speed = random.gauss(baseSpeed, 30)
+            y = shipY - h//2 - offset
+            name = random.choice(self.meteorPool)
+            m = MeteorSprite(name, (x, y), (0, speed), self.meteorBatch, self.props)
+            self.meteors.append(m)
+
+            speed = random.gauss(baseSpeed, 30)
+            y = shipY + h//2 + offset
+            name = random.choice(self.meteorPool)
+            m = MeteorSprite(name, (x, y), (0, -speed), self.meteorBatch, self.props)
+            self.meteors.append(m)
+
+        for y in range(shipY-h//2, shipY+h//2, spacing):
+            speed = random.gauss(baseSpeed, 30)
+            x = shipX - w//2 - offset
+            name = random.choice(self.meteorPool)
+            m = MeteorSprite(name, (x, y), (speed, 0), self.meteorBatch, self.props)
+            self.meteors.append(m)
+
+            speed = random.gauss(baseSpeed, 30)
+            x = shipX + w//2 + offset
+            name = random.choice(self.meteorPool)
+            m = MeteorSprite(name, (x, y), (-speed, 0), self.meteorBatch, self.props)
             self.meteors.append(m)
 
 
@@ -152,7 +192,10 @@ class Swarm(object):
         speed = random.gauss(speedBase, 30)
         name = random.choice(self.meteorPool)
 
-        m = MeteorSprite(name, x, y, speed, self.meteorBatch, self.props)
+        th = 360*random.random()
+        u,v = vec.uvec(th)
+
+        m = MeteorSprite(name, (x, y), (speed*u, speed*v), self.meteorBatch, self.props)
         self.meteors.append(m)
 
         #print "generated meteor", shipPosition, viewportOrigin, sides[side], x, y
@@ -170,7 +213,9 @@ class Swarm(object):
             speed = random.gauss(100, 30)
             x = tv.wrap(shipPosition[0] + 1.5*w, -w, 2*w)
             y = tv.wrap(shipPosition[1] + 1.5*h, -h, 2*h)
-            m = MeteorSprite(x, y, speed, self.meteorBatch, self.props)
+            th = 360*random.random()
+            u,v = vec.uvec(th)
+            m = MeteorSprite("foo", (x, y), (speed*u, speed*v), self.meteorBatch, self.props)
             self.meteors.append(m)
             #print shipPosition, x, y
         
@@ -196,16 +241,19 @@ class Swarm(object):
 
 class MeteorSprite(pyglet.sprite.Sprite):
 
-    def __init__(self, name, x, y, speed, batch, props):
+    def __init__(self, name, posn, vel, batch, props):
         #global gAssets
-        super(self.__class__, self).__init__(GameAssets.Instance().getImage(name), x,y, batch=batch)
+        img = GameAssets.Instance().getImage(name)
+        super(self.__class__, self).__init__( img, posn[0], posn[1], batch=batch)
         self.props = props
         self.name = name
 
-        th = 360*random.random()
-        u,v = vec.uvec(th)
+        #th = 360*random.random()
+        #u,v = vec.uvec(th)
         #speed = random.gauss(100, 50)
-        self.motion = tv.LinearMotion2(x,y, speed*u, speed*v)
+        #self.motion = tv.LinearMotion2(x,y, speed*u, speed*v)
+        self.motion = tv.LinearMotion2(posn[0], posn[1], vel[0], vel[1])
+
         #self.motion = tv.LinearMotion2(x,y, 0, 0)
         #self.wrapW = w
         #self.wrapH = h
@@ -280,6 +328,7 @@ class MultiExplosion(object):
         self.times = times
         self.alive = True
         self.timeAlive = 0.0
+        self.running = False
 
         # Note: sounds are just started and continue on their own, sprites
         # need to be rememberd and drawn by us.
@@ -289,7 +338,13 @@ class MultiExplosion(object):
 
         self.nextTimeIdx = 0
 
+    def start(self):
+        self.running = True
+
     def update(self, dt):
+        if not self.running:
+            return
+
         self.timeAlive += dt
         for s in self.sprites:
             s.update(dt)
@@ -319,7 +374,7 @@ class MultiExplosion(object):
         return not self.alive
         
 
-    def draw(self):
+    def draw(self, window):
         for s in self.sprites:
             s.draw()
 
@@ -450,23 +505,29 @@ class MeteorRadar(object):
         self.text.text = " meteors"
         #print "set radar to", n
 
-class Timer(object):
+class TimeDisplay(object):
     """docstring for MeteorRader"""
-    def __init__(self, props):
-        super(Timer, self).__init__()
+    def __init__(self, props, displayTenths = False):
+        super(TimeDisplay, self).__init__()
         self.props = props
         self.seconds = 0.0
-        self.currDisplaySeconds = -1
+
+        # either seconds or 1/10th of seconds, depending on flag
+        self.currDisplayAmt = -1 
+        self.displayTenths = displayTenths
 
         xPos = props.windowWidth - 100
 
+        self.batch = pyglet.graphics.Batch()
         commonOpts = {
             'font_name': 'Orbitron', 
             'bold': True, 
             'font_size': 16,
             'color': (255,255,0, 200),
             'text': "",
-            'y': 10}
+            'y': 10,
+            'batch': self.batch
+            }
 
         t = commonOpts.copy()
         t.update( {'x':xPos})
@@ -485,29 +546,46 @@ class Timer(object):
         t.update( {'x':xPos})
         self.sec1s = pyglet.text.Label(**t)
 
+        if self.displayTenths:
+            xPos += 20
+            t.update( {'x':xPos, 'text': "."})
+            self.decimal = pyglet.text.Label(**t)
+
+            xPos += 8
+            t.update( {'x':xPos, 'text': ""})
+            self.secTenths = pyglet.text.Label(**t)
+
         self.nItems = 0
 
-    def update(self, dt):
-        self.seconds += dt
-        secondsInt = int(self.seconds)
-        if secondsInt != self.currDisplaySeconds:
-            m,s = divmod(secondsInt, 60)
+    #def update(self, dt):
+    def setTime(self, seconds):
+        #self.seconds += dt
+        self.seconds = seconds
+        #secondsDisp = int(10*self.seconds)/10.
+        dispAmt = int( 10*self.seconds if self.displayTenths else self.seconds)
+
+        if dispAmt != self.currDisplayAmt:
+            t = int(dispAmt/10. if self.displayTenths else dispAmt)
+
+            m,s = divmod(t, 60)
             s10, s1 = divmod(s, 10)
+
             self.min.text      = str(m)
             self.sec10s.text   = str(s10)
             self.sec1s.text    = str(s1)
 
+            if self.displayTenths:
+                self.secTenths.text = str(int(dispAmt - 10*t))
+
+
 
 
     def draw(self):
-
-
-
-
-        self.min.draw()
-        self.colon.draw()
-        self.sec10s.draw()
-        self.sec1s.draw()
+        self.batch.draw()
+        #self.min.draw()
+        #self.colon.draw()
+        #self.sec10s.draw()
+        #self.sec1s.draw()
 
 class GameOver(object):
     """docstring for GameOver"""

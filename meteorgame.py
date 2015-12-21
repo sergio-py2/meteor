@@ -82,23 +82,19 @@ class GameWindow(pyglet.window.Window):
         props.windowHeight    = self.height
         self.props = props
 
-        #self.gameElements = GameElements(props)
-        #self.gameElements.populateGame( gAssets )
-
-        ge = gameelements.GameElements(props)
-        #ge.populateGame( gAssets )
-        ge.populateGame( GameAssets.Instance() )
-
         self.userInput = Attributes()
 
         self.userInput.joystick = joystick
         self.userInput.keys = key.KeyStateHandler()
         self.push_handlers(self.userInput.keys)
 
-        self.gamePhase = gamephase.PlayPhase( ge, props, self )
+        self.gamePhase = gamephase.PlayCountPhase( props, self )
+        #self.gamePhase = gamephase.PlayTimePhase( props, self )
         #self.gamePhase = gamephase.LeaderBoardPhase( props, self, (1,2,3) )
         #s = random.randint(5,500)
         #self.gamePhase = gamephase.LeaderBoardPhase(props, self, (None, 'MA', s))
+
+        self.gamePhase.start()
 
 
         # I think extending Window automatically has this as a handler
@@ -128,7 +124,7 @@ class GameWindow(pyglet.window.Window):
         if gp is None:
             return
 
-        # State change
+        # Switch to new game phase
         self.gamePhase.delete()
         gp.start()
 

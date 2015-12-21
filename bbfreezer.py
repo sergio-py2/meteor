@@ -26,9 +26,6 @@ def main():
     #frz.addScript("timevars.py")
     #frz.addScript("vector.py")
 
-    #frz.addScript("meteor_fullscreen.py")
-    #frz.addScript("meteor_nosound.py")
-    #frz.addScript("meteor_fullscreen_nosound.py")
      
     frz.use_compression = 0
     frz.include_py = True
