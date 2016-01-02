@@ -1,5 +1,7 @@
 #!python  -u
 
+import math
+
 import pickle
 import copy
 import random
@@ -18,6 +20,7 @@ import activeobjects as ao
 
 from geoip import GeoIPData
 from gameassets import GameAssets
+from config import Config
 
 class GamePhase(object):
     """ Abstract base class for one phase of a game."""
@@ -59,35 +62,25 @@ class PlayPhaseBase(GamePhase):
         self.gameElements = gameelements.GameElements(windowProps)
         self.gameElements.populateGame( GameAssets.Instance() )
 
-        #self.gameElements = gameElements
-
         self.shotMargin = 20
 
         self.viewportOrigin = [0.0, 0.0]
         self.destinationTracker = tv.TimeAverage2(0.7, *self.gameElements.ship.getPosition())
 
         self.shake = None
-        #self.boom = None
-
-        # Explosion timer + boom is messy and should be replaced when
-        # we get event chaining.
-        # ---
-        # When we detect the ship dying we set this to non-None
-        #self.shipExplosionTimer = None
-        #self.boom = None
 
         self.endGame = None
-        self.drawFrameMarker = None
-        self.explodedMarker = None
+        self.explodedMarker = ao.MarkerAO()
+        self.drawFrameMarker = ao.MarkerAO()
 
     def start(self):
         pass
 
     def update(self, dt, userInput):
-        g = self.gameElements
+        ge = self.gameElements
 
         # Elements that evolve pretty much by themselves.
-        g.update(dt)
+        ge.update(dt)
 
         # End of game display
         if self.endGame is not None:
@@ -96,10 +89,11 @@ class PlayPhaseBase(GamePhase):
 
         # Regular game play
         # Use controls to update the ship.
-        if userInput.joystick is not None:
-            self.joystickUpdate(dt, userInput.joystick)
-        else:
-            self.keyboardUpdate(dt, userInput.keys)
+        if not self.explodedMarker.done():
+            if userInput.joystick is not None:
+                self.joystickUpdate(dt, userInput.joystick)
+            else:
+                self.keyboardUpdate(dt, userInput.keys)
 
         if userInput.keys[key.M]:
             print ""
@@ -114,30 +108,17 @@ class PlayPhaseBase(GamePhase):
         # We handle lazer blasts when they are created
         # What else should go here?
 
+        # Let the viewport continue to drift even after ship destroyed 
+        # instead of just freezing
+        #if not self.explodedMarker.done():
         self.updateViewport(dt)
-        ship = self.gameElements.ship 
 
-        # Check for hits on space ship
-        p1 = Vec(*ship.getPosition())
-        r1 = ship.getRadius()
-
-        prevMinD = 1000000 # infinity
-        hitObj = None
-        severity = 1000.0
-
-        for o in g.swarm.objects():
-            p2 = Vec(*o.getCenter())
-            r2 = o.getRadius()
-
-            d = vec.Distance(p1, p2)
-            if d < r1 + r2 and d < prevMinD:
-                #print d, r1, r2
-                prevMinD = d
-                hitObj = o
-                severity = d/(r1+r2)
+        posn = ge.ship.getPosition()
+        ge.swarm.spawnNew(posn, self.viewportOrigin)
+        
+        hitObj, severity = self.findHit()
 
         if hitObj is not None:
-            #print "Hit", severity
             if severity > 0.8:
                 #print "graze", severity
                 pass
@@ -150,11 +131,38 @@ class PlayPhaseBase(GamePhase):
                 # Explode
                 self.spaceShipDeath()
 
-        posn = ship.getPosition()
-        g.swarm.spawnNew(posn, self.viewportOrigin)
 
         #self.radar.setNumItems( g.swarm.nItems())
 
+    def findHit(self):
+        # Check for hits on space ship
+
+        ship = self.gameElements.ship 
+
+        p1 = Vec(*ship.getPosition())
+        r1 = ship.getRadius()
+
+
+        prevMinD = 1000000 # infinity
+        hitObj = None
+        severity = 1000.0
+
+        for o in self.gameElements.swarm.objects():
+            p2 = Vec(*o.getCenter())
+            r2 = o.getRadius()
+
+            d = vec.Distance(p1, p2)
+            if d < r1 + r2 and d < prevMinD:
+                #print d, r1, r2
+                prevMinD = d
+                hitObj = o
+                severity = d/(r1+r2)
+
+        if hitObj is None:
+            return None, None
+            #print "Hit", severity
+        else:
+            return hitObj, severity
 
     def joystickUpdate(self, dt, joystick):
         js = joystick
@@ -237,7 +245,8 @@ class PlayPhaseBase(GamePhase):
         ga = GameAssets.Instance()
         g = self.gameElements
         shot = g.ship.shoot(g.shotBatch)
-        ga.getSound('lazer-shot-1').play()
+        if Config.Instance().sound():
+            ga.getSound('lazer-shot-1').play()
 
         if shot is not None:
             g.shots.append(shot)
@@ -254,7 +263,8 @@ class PlayPhaseBase(GamePhase):
         points = meteor.getValue()
         self.score.addScore(points)
         g.swarm.explode(meteor)
-        ga.getSound('bomb-explosion-1').play()
+        if Config.Instance().sound():
+            ga.getSound('bomb-explosion-1').play()
 
     def updateViewport(self, dt):
         # Viewport tracks ship, roughly, i.e. it shift when ship gets near an edge.
@@ -307,7 +317,8 @@ class PlayPhaseBase(GamePhase):
 
         self.drawSpace(window)
 
-        if self.drawFrameMarker and self.drawFrameMarker.done():
+        if self.endGame and self.drawFrameMarker.done():
+            # draw "Game Done" in absolute window position
             self.endGame.draw(window)
 
     def drawSpace(self, window):
@@ -333,10 +344,10 @@ class PlayPhaseBase(GamePhase):
         ge.starField.draw()
         ge.swarm.draw()
 
-        #if self.boom is None:
-        if self.explodedMarker is None or not self.explodedMarker.done():
+        if not self.explodedMarker.done():
             ge.ship.draw()
-        if self.drawFrameMarker and not self.drawFrameMarker.done():
+
+        if self.endGame and not self.drawFrameMarker.done():
             self.endGame.draw(window)
 
         for shot in ge.shots:
@@ -355,8 +366,6 @@ class PlayCountPhase(PlayPhaseBase):
         self.timer = tv.CountUpTimer(running=True)
         self.timeDisplay = sprites.TimeDisplay(windowProps)
 
-
-
     def update(self, dt, userInput):
         gp = super(PlayCountPhase, self).update(dt, userInput)
         if gp is not None:
@@ -364,14 +373,14 @@ class PlayCountPhase(PlayPhaseBase):
 
         self.score.update(dt)
 
-        if self.explodedMarker is None or not self.explodedMarker.done():
+        #if self.explodedMarker is None or not self.explodedMarker.done():
+        if not self.explodedMarker.done():
             self.timer.update(dt)
         self.timeDisplay.setTime( self.timer.time())
         
         self.radar.setNumItems( self.gameElements.swarm.nItems())
 
         if self.endGame and self.endGame.done():
-
             # Go to the leader board
             score = self.score.value
             state = GeoIPData.Instance().state
@@ -402,25 +411,27 @@ class PlayCountPhase(PlayPhaseBase):
         shakeTime = 0.75
         self.shake = tv.Shaker2(shakeTime, 22.0, 8.0)
         self.score.addScore([-2]*8)
-        #self.state = GP_DYING
-        self.shipExplosionTimer = tv.CountDownTimer(0.2, running=True)
+        ship = self.gameElements.ship
 
         # Set up end-of-game ActiveObjects
-        p1 = self.gameElements.ship.getPosition()
-        explosionSprite = sprites.MultiExplosion(p1[0], p1[1], [0.0, 0.3, 0.5, 0.6, 1.0])
 
-        self.explodedMarker = ao.MarkerAO()
-        self.drawFrameMarker = ao.MarkerAO()
+        # Position doesn't matter - it'll be updated later
+        explosionSprite = sprites.MultiExplosion(0.,0., [0.0, 0.3, 0.5, 0.6, 1.0, 1.8])
 
-        # need to replace this with a thunk that centers
-        #  explosion at ship location at that time
-        fnCallMarker = ao.MarkerAO()    
+
+        def positionExplosion(ship=self.gameElements.ship, explosion=explosionSprite):
+            p = ship.getPosition()
+            explosion.x = p[0]
+            explosion.y = p[1]
 
         self.endGame = ao.SerialObjects(
-            ao.DelayAO(shakeTime),
-            fnCallMarker,
-            self.explodedMarker, 
+            ao.DelayAO(shakeTime/2.),
+            ao.FunctionWrapperAO(positionExplosion),
+            self.explodedMarker,
+            ao.FunctionWrapperAO(lambda: ship.drag(0.66)),
+            ao.SoundWrapperAO(GameAssets.Instance().getSound('wilhelm')),
             ao.SpriteWrapperAO(explosionSprite),
+            ao.FunctionWrapperAO(lambda: ship.drag(0.9)),
             self.drawFrameMarker,
             ao.DelayAO(0.2),
             ao.GameOverAO(self.windowProps)
@@ -442,20 +453,31 @@ class PlayTimePhase(PlayPhaseBase):
         
         self.timeRemaining = 20.0
         self.timeRemainingDisplay = sprites.TimeDisplay(windowProps, displayTenths = True)
+        self.playing = True
 
 
 
     def update(self, dt, userInput):
-        gp = super(PlayTimePhase, self).update(dt, userInput)
-        if gp is not None:
-            return gp
+        if self.playing:
+            gp = super(PlayTimePhase, self).update(dt, userInput)
+            if gp is not None:
+                return gp
 
-        self.timeElapsed.update(dt)
-        self.timeElapsedDisplay.setTime( self.timeElapsed.time())
+        if self.playing:
 
-        self.timeRemaining -= dt
+            self.timeElapsed.update(dt)
+            self.timeElapsedDisplay.setTime( self.timeElapsed.time())
+
+            self.timeRemaining -= dt
+            if self.timeRemaining > 0.:
+                self.timeRemainingDisplay.setTime(self.timeRemaining)
+                return
+
+        # Time ran out
+        self.playing = False
+        self.timeRemaining = 0.
         self.timeRemainingDisplay.setTime(self.timeRemaining)
-
+               
         #self.score.update(dt)
         #self.timer.update(dt)
         #self.radar.setNumItems( self.gameElements.swarm.nItems())
@@ -481,8 +503,12 @@ class PlayTimePhase(PlayPhaseBase):
         self.timeRemaining += 1.5
         #self.score.addScore(points)
         g.swarm.explode(meteor)
-        ga.getSound('bomb-explosion-1').play()
+        if Config.Instance().sound():
+            ga.getSound('bomb-explosion-1').play()
         
+
+    def spaceShipShake(self):
+        self.timeRemaining -= 2.
 
 
 
@@ -730,7 +756,8 @@ class LeaderBoardPhase(GamePhase):
             self.fanfare = ga.getSound('ohno')
 
     def start(self):
-        self.fanfare.play()
+        if Config.Instance().sound():
+            self.fanfare.play()
 
     def update(self, dt, userInput):
         if self.done:
@@ -785,4 +812,22 @@ class LeaderBoardPhase(GamePhase):
         if self.textEntry:
             self.textEntry.delete()
 
+
+def getJoystickPolarLeft(js):
+    # Note 1: I assume th will just be jittery around the origin.
+    # Note 2: It's possible r will go above 1.0. We can normalize r based
+    #         on angle here if we want.
+
+    x,y = js.x, js.y
+    r2 = x*x + y*y
+    th = math.atan2(y,x) * (180.0/math.pi)
+
+    return math.sqrt(r2), th
+
+def getJoystickPolarRight(js):
+    x,y = js.rx, js.ry
+    r2 = x*x + y*y
+    th = math.atan2(y,x) * (180.0/math.pi)
+
+    return math.sqrt(r2), th
 

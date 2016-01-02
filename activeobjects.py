@@ -5,7 +5,7 @@ import pyglet.gl as gl
 
 import timevars as tv
 import sprites
-
+from config import Config
 
 class ActiveObject(object):
     """ Abstract base class representing items that show up on screen """
@@ -107,7 +107,7 @@ class ParallelObjects(ActiveObject):
         for so in self.objects:
             so.delete()
 
-class XSO(ActiveObject):
+class XSOXXXX(ActiveObject):
     """docstring for XSO"""
     def __init__(self, props):
         super(XSO, self).__init__()
@@ -196,6 +196,8 @@ class MarkerAO(ActiveObject):
         return self.isDone
 
 class SpriteWrapperAO(ActiveObject):
+    # My sprites don't have a well-defined interface so this only works for
+    # Multiexplosion  right now.
     def __init__(self, sprite, started=False):
         self.sprite = sprite
         
@@ -211,3 +213,31 @@ class SpriteWrapperAO(ActiveObject):
     def done(self):
         return self.sprite.done()
 
+class SoundWrapperAO(ActiveObject):
+    def __init__(self, sound, started=False):
+        self.sound = sound
+        self.isDone = False
+        
+    def start(self):
+        if Config.Instance().sound():
+            self.sound.play()
+        self.isDone = True
+
+
+    def done(self):
+        return self.isDone
+
+class FunctionWrapperAO(ActiveObject):
+    """ Just calls a (no-argument) function when started"""
+    def __init__(self, fn):
+        super(FunctionWrapperAO, self).__init__()
+        self.fn = fn
+        self.isDone = False
+        
+    def start(self):
+        self.fn()
+        self.isDone = True
+
+    def done(self):
+        return self.isDone
+        

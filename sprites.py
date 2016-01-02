@@ -10,6 +10,7 @@ import vector as vec
 import timevars as tv
 
 from gameassets import GameAssets
+from config import Config
 
 
 #gAssets = None
@@ -358,13 +359,17 @@ class MultiExplosion(object):
             return
 
         # Time for next boom
-        s = ExplosionSprite(self.x + 100*random.random(), self.y + 100*random.random())
+        r = random.gauss(40, 20)        
+        th = random.randrange(360)
+        s = ExplosionSprite(self.x + r*math.cos(th), self.y + r*math.sin(th))
+        #s = ExplosionSprite(self.x + 0, self.y + 0)
         self.sprites.append(s)
 
-        player = pyglet.media.Player()
-        player.queue(GameAssets.Instance().getSound('bomb-explosion-1'))
-        player.play()
-        self.players.append(player)
+        if Config.Instance().sound():
+            player = pyglet.media.Player()
+            player.queue(GameAssets.Instance().getSound('bomb-explosion-1'))
+            player.play()
+            self.players.append(player)
 
         #gAssets.getSound('boom2').play()
 
@@ -379,10 +384,11 @@ class MultiExplosion(object):
             s.draw()
 
 class ExplosionSprite(pyglet.sprite.Sprite):
-    lifeTime = 0.75 # Just a guess, doesn't matter as it's only used for clean-up
+    lifeTime = 4.75 # Just a guess, doesn't matter as it's only used for clean-up
 
     def __init__(self, x, y):
         super(self.__class__, self).__init__(GameAssets.Instance().getImage('explosion'), x, y)
+        #super(self.__class__, self).__init__(GameAssets.Instance().getImage('dbg2'), x, y)
 
         th = 360*random.random()
         u,v = vec.uvec(th)

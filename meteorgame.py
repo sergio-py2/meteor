@@ -19,6 +19,7 @@ import gameelements
 
 from gameassets import GameAssets
 from geoip import GeoIPData
+from config import Config
 
 
 # Objects that just hold a bunch of attributes
@@ -135,24 +136,6 @@ class GameWindow(pyglet.window.Window):
         self.gamePhase.draw(self)
 
 
-def getJoystickPolarLeft(js):
-    # Note 1: I assume th will just be jittery around the origin.
-    # Note 2: It's possible r will go above 1.0. We can normalize r based
-    #         on angle here if we want.
-
-    x,y = js.x, js.y
-    r2 = x*x + y*y
-    th = math.atan2(y,x) * (180.0/math.pi)
-
-    return math.sqrt(r2), th
-
-def getJoystickPolarRight(js):
-    x,y = js.rx, js.ry
-    r2 = x*x + y*y
-    th = math.atan2(y,x) * (180.0/math.pi)
-
-    return math.sqrt(r2), th
-
 
 
 def play(windowOpts):
@@ -174,11 +157,12 @@ def play(windowOpts):
     # First time a sound is played there is a delay. So 
     # play it now to get it over with. (Causes slight delay. Or maybe not?)
     developing = False
-    if not developing:
+    if not developing and Config.Instance().sound():
         player = pyglet.media.Player()
         player.volume = 0
         player.queue(ga.getSound('lazer-shot-1'))
         player.queue(ga.getSound('bomb-explosion-1'))
+        player.queue(ga.getSound('wilhelm'))
         #player.queue(gAssets.getSound('boom2'))
         player.play()
 

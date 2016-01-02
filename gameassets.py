@@ -5,6 +5,8 @@ import math
 
 import pyglet
 
+from config import Config
+
 @Singleton
 class GameAssets(object):
     """ Loads images, sounds, etc. from files and holds them as pyglet-compatible
@@ -66,7 +68,7 @@ class GameAssets(object):
         cx = (exp.width//nx)/2
         cy = (exp.height//ny)/2
 
-        # You get to set the anchor point on each grid sub-image independently
+        # You get to/have to set the anchor point on each grid sub-image independently
         for frame in expSeq:
             frame.anchor_x = cx
             frame.anchor_y = cy
@@ -75,15 +77,16 @@ class GameAssets(object):
         anim = pyglet.image.Animation.from_image_sequence(expSeq, blastTime/(nx*ny), False)
         self.images['explosion'] = anim
 
-        self.loadStdSound('lazer-shot-1.mp3', 'lazer-shot-1')
-        #self.pew = pyglet.resource.media('pew4.mp3', streaming=False)
-        #self.pew = pyglet.resource.media('pew-js.wma', streaming=False)
-        #self.loadStdSound('boom3.mp3', 'boom')
-        self.loadStdSound('bomb-explosion-1.mp3', 'bomb-explosion-1')
-        self.loadStdSound('wilhelm.mp3', 'wilhelm')
-        self.loadStdSound('tada.mp3', 'tada')
-        self.loadStdSound('oh_no.mp3', 'ohno')
-        #self.loadStdSound('boom3-w-silence.mp3', 'boom3')
+        if Config.Instance().sound():
+            self.loadStdSound('lazer-shot-1.mp3', 'lazer-shot-1')
+            #self.pew = pyglet.resource.media('pew4.mp3', streaming=False)
+            #self.pew = pyglet.resource.media('pew-js.wma', streaming=False)
+            #self.loadStdSound('boom3.mp3', 'boom')
+            self.loadStdSound('bomb-explosion-1.mp3', 'bomb-explosion-1')
+            self.loadStdSound('wilhelm.mp3', 'wilhelm')
+            self.loadStdSound('tada.mp3', 'tada')
+            self.loadStdSound('oh_no.mp3', 'ohno')
+            #self.loadStdSound('boom3-w-silence.mp3', 'boom3')
 
         # Get this font by specifying font_name='Orbitron', bold=True
         fontFile = 'Orbitron Bold.ttf'
