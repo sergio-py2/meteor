@@ -134,12 +134,13 @@ class ShipSprite(object):
             return None
 
 
-class LaserCannon(object):
+class LaserCannon0(object):
     resetTime = 0.05
 
     def __init__(self):
-        super(LaserCannon, self).__init__()
+        super(LaserCannon0, self).__init__()
         self.sinceShot = 1000.0
+
 
     def update(self, dt):
         self.sinceShot += dt
@@ -150,3 +151,29 @@ class LaserCannon(object):
             return True
         else:
             return False
+
+class LaserCannon(object):
+
+    def __init__(self):
+        super(LaserCannon, self).__init__()
+        self.magazine1 = tv.Magazine(3, 0.1, 0.20, 3)
+        self.magazine2 = tv.Magazine(5, 0.3, 0.75, 5)
+
+    def update(self, dt):
+        self.magazine1.update(dt)
+        self.magazine2.update(dt)
+
+        if self.magazine1.isLoadReady() and self.magazine2.isDeliverReady():
+            self.magazine1.load()
+            self.magazine2.deliver()
+
+        if self.magazine2.isLoadReady():
+            self.magazine2.load()
+
+    def shoot(self):
+        if self.magazine1.isDeliverReady():
+            self.magazine1.deliver()
+            return True
+        else:
+            return False
+

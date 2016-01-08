@@ -3,8 +3,67 @@
 import math
 import random
 
+class Magazine(object):
+    """Simulates an ammo magazine that holds N bullets and takes time 
+    to deliver and to restock. """
+    def __init__(self, maxCapacity, deliveryResetSec, loadResetSec, initialHold = 0):
+        super(Magazine, self).__init__()
+        self.maxCapacity = maxCapacity
+        self.deliveryResetSec = deliveryResetSec
+        self.loadResetSec = loadResetSec
+        self.currHold = initialHold
+
+        self.sinceDelivery = 0.
+        self.sinceLoad = 0.
+
+    def update(self, dt):
+        self.sinceDelivery += dt
+        self.sinceLoad += dt
+
+    def empty(self):
+        return self.currHold == 0
+
+    def full(self):
+        return self.currHold == self.maxCapacity
+
+    def isDeliverReady(self):
+        if self.currHold > 0 and self.sinceDelivery >= self.deliveryResetSec:
+            return True
+        else:
+            return False
+
+    def isLoadReady(self):
+        if self.currHold < self.maxCapacity and self.sinceLoad >= self.loadResetSec:
+            return True
+        else:
+            return False
+
+    def deliver(self):
+        if self.currHold == 0:  
+            raise Exception("Tried to deliver from empty magazine")
+
+        if self.sinceDelivery < self.deliveryResetSec:
+            raise Exception("Tried to deliver from magazine too quickly")
+
+        self.currHold -= 1
+        self.sinceDelivery = 0.
+
+    def load(self):
+        if self.currHold == self.maxCapacity:
+            raise Exception("Tried to load an already full magazine")
+
+        if self.sinceLoad < self.loadResetSec:
+            raise Exception("Tried to load  magazine too quickly")
+
+        self.currHold += 1
+        self.sinceLoad = 0.
+
+
+        
+
+
 class Blinker(object):
-    """docstring for Blinker"""
+    """ On/Off/On/Off """
     def __init__(self, period):
         super(Blinker, self).__init__()
         self.switchTime = period/2.
