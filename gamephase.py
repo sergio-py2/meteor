@@ -649,7 +649,7 @@ class LeaderBoardPhase(GamePhase):
             topScore = ldrs[0][2] if len(ldrs) > 0 else 0
             topScore = max(topScore, newScore) + random.randint(50,150)
 
-            d = {'CA': "Superstar", 'WA': "Coby", 'MA': "Wicked"}
+            d = {'CA': "Superstar", 'WA': "Coby", 'MA': "Sergio"}
             taunt = d.get(state, "Mr. Jones")
             ldrs.insert(0, (taunt, 'XX', topScore))
 
