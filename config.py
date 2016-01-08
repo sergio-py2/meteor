@@ -16,3 +16,6 @@ class Config(object):
     def sound(self):
         return True
 
+    def tryJoystick(self):
+        return False
+

@@ -245,11 +245,12 @@ class PlayPhaseBase(GamePhase):
         ga = GameAssets.Instance()
         g = self.gameElements
         shot = g.ship.shoot(g.shotBatch)
-        if Config.Instance().sound():
-            ga.getSound('lazer-shot-1').play()
 
         if shot is not None:
             g.shots.append(shot)
+    
+            if Config.Instance().sound():
+                ga.getSound('lazer-shot-1').play()
 
             m = g.swarm.findShotHit(shot, self.shotMargin)
             

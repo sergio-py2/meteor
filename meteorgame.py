@@ -37,12 +37,14 @@ class Application(object):
     def __init__(self, windowOpts):
         super(Application, self).__init__()
 
-        joysticks = pyglet.input.get_joysticks()
-        if len(joysticks) > 0:
-            js = joysticks[0]
-            js.open()
-        else:
-            js = None
+        js = None
+
+        if Config.Instance().tryJoystick():
+            joysticks = pyglet.input.get_joysticks()
+            if len(joysticks) > 0:
+                js = joysticks[0]
+                js.open()
+            
 
         #windowOpts = {'width': 1200, 'height': 500}
         #windowOpts = {'fullscreen': True}
